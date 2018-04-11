@@ -1,9 +1,7 @@
 package s0553449;
 
 import java.awt.Point;
-
-import org.lwjgl.LWJGLUtil;
-import org.lwjgl.opengl.GL11;
+import java.text.DecimalFormat;
 
 import lenz.htw.ai4g.ai.AI;
 import lenz.htw.ai4g.ai.DriverAction;
@@ -12,11 +10,12 @@ import lenz.htw.ai4g.ai.Info;
 public class MyCarMain extends AI {
 
 	private static float BRAKE_ANGLE = 6.14f;
-	private static float MAX_ANGLE_SPD = 200f;
-	private static float APPROACH_POWER = 1.5f;
-	private static float BRAKE_TIME = 1f;
+	private static float MAX_ANGLE_SPD = 50f;
+	private static float APPROACH_POWER = 1.62f;
+	private static float TURN_VELOCITY = 6f;
 	
 	private String debugStr = "";
+	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
 
 	public MyCarMain(Info info) {
 		super(info);
@@ -59,12 +58,17 @@ public class MyCarMain extends AI {
 			throttle = info.getMaxAcceleration();			
 		} else {
 			// We are turning, so we drive slower
-			throttle = info.getMaxAcceleration(); // * 0.25f;
+			float acc = Math.max(TURN_VELOCITY - info.getVelocity().length(), 0);
+			throttle = acc;
 		}
 
-		debugStr += "deltaAngle: " + deltaAngle + "\n";
-		debugStr += "targetAngleV: " + targetAngleV + "\n";
-		debugStr += "current angleV: " + info.getAngularVelocity() + "\n";
+		debugStr += "deltaAngle: " + debugFormat.format(deltaAngle) + "\n";
+		debugStr += "targetAngleV: " + debugFormat.format(targetAngleV) + "\n";
+		debugStr += "current angleV: " + debugFormat.format(info.getAngularVelocity()) + "\n";
+		debugStr += "current vel: " + debugFormat.format(info.getVelocity().length()) + "\n";
+
+		debugStr += "steering chk: " + debugFormat.format(steering/info.getMaxAngularAcceleration()) + "\n";
+		debugStr += "throttle chk: " + debugFormat.format(throttle/info.getMaxAcceleration()) + "\n";
 		
 		return new DriverAction(throttle, steering);
 	}

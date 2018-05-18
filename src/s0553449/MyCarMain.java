@@ -33,6 +33,8 @@ public class MyCarMain extends AI {
 
 	public MyCarMain(Info info) {
 		super(info);
+		// enlistForDevelopment();
+		enlistForTournament(553449);
 	}
 
 	@Override
@@ -160,10 +162,5 @@ public class MyCarMain extends AI {
 	@Override
 	public String getTextureResourceName() {
 		return "/s0553449/car.png";
-	}
-	
-	@Override
-	public boolean isEnabledForRacing() {
-		return true;
 	}
 }

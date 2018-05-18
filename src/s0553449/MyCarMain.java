@@ -1,7 +1,10 @@
 package s0553449;
 
 import java.awt.Point;
+import java.awt.Polygon;
 import java.text.DecimalFormat;
+
+import org.lwjgl.opengl.GL11;
 
 import lenz.htw.ai4g.ai.AI;
 import lenz.htw.ai4g.ai.DriverAction;
@@ -14,8 +17,19 @@ public class MyCarMain extends AI {
 	private static float APPROACH_POWER = 1.62f;
 	private static float TURN_VELOCITY = 6f;
 	
+	private static float TARGET_WEIGHT = 1f;
+	private static float OBSTACLE_WEIGHT = 10f;
+	
+	private float feelerDistance = 20f;
+	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
+	
+	// display specific stuff
+	private float x;
+	private float y; 
+	private float[] debugXs;
+	private float[] debugYs;
 
 	public MyCarMain(Info info) {
 		super(info);
@@ -29,10 +43,52 @@ public class MyCarMain extends AI {
 		float steering = 0f;
 		
 		Point ncp = info.getCurrentCheckpoint();
-		float x = info.getX();
-		float y = info.getY();
+		x = info.getX();
+		y = info.getY();
 		float deltaX = ncp.x - x;
 		float deltaY = ncp.y - y;
+		float distanceToTarget = (float) Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+		deltaX /= distanceToTarget;
+		deltaY /= distanceToTarget;
+		
+		deltaX *= TARGET_WEIGHT;
+		deltaY *= TARGET_WEIGHT;
+		
+		debugStr += "pre delta: " + deltaX + ", " + deltaY + "\n";
+		
+		Polygon[] obstacles = info.getTrack().getObstacles();
+		
+		debugXs = new float[3];
+		debugYs = new float[3];
+
+		float throttlemod = 1f;
+		// stupid hack
+		boolean firstCollided = false;
+		
+		for(int i = -1; i <= 1; i++) {
+			float angle = i * (float) Math.PI/4;
+			float absAngle = info.getOrientation() + angle;
+			float dX = (float) Math.cos(absAngle);
+			float dY = (float) Math.sin(absAngle);
+			float invert = (float) Math.signum(i);
+			
+			for(Polygon o : obstacles) {
+				if(o.contains(x + dX * feelerDistance, y + dY * feelerDistance) && !(i == 1 && firstCollided)) {
+					deltaX += invert * dY * OBSTACLE_WEIGHT;
+					deltaY += -invert * dX * OBSTACLE_WEIGHT;
+
+					throttlemod = i == 0? -1f : 0.4f;
+					if (i == -1) {
+						firstCollided = true;
+					}
+				}
+			}
+			
+			debugXs[i+1] = x + dX * feelerDistance;
+			debugYs[i+1] = y + dY * feelerDistance;
+		}
+
+		debugStr += "post delta: " + deltaX + ", " + deltaY + "\n";
 		
 		float reverse = 1;
 		
@@ -62,6 +118,8 @@ public class MyCarMain extends AI {
 			throttle = acc;
 		}
 
+		throttle *= throttlemod;
+
 		debugStr += "deltaAngle: " + debugFormat.format(deltaAngle) + "\n";
 		debugStr += "targetAngleV: " + debugFormat.format(targetAngleV) + "\n";
 		debugStr += "current angleV: " + debugFormat.format(info.getAngularVelocity()) + "\n";
@@ -72,10 +130,25 @@ public class MyCarMain extends AI {
 		
 		return new DriverAction(throttle, steering);
 	}
+
+	protected Point getCurrentCheckpoint() {
+		return info.getCurrentCheckpoint();
+	}
 	
 	@Override
 	public void doDebugStuff() {
 		System.out.println(debugStr);
+		
+		if (debugXs.length != 0) {
+			for (int i = 0; i < debugXs.length; i++) {
+				GL11.glColor3f(0.0f, 1.0f, 0.2f);
+				GL11.glBegin(GL11.GL_LINE_STRIP);
+		
+				GL11.glVertex2d(x, y);
+				GL11.glVertex2d(debugXs[i], debugYs[i]);
+				GL11.glEnd();
+			}
+		}
 	}
 
 

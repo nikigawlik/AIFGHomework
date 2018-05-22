@@ -7,13 +7,13 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
     
     public /*<n*/TemplateCar/*>*/(Info info) {
         super(info);
-        brakeAngle = /*<f*/6.5f/*>*/;
-        maxAngleSpd = /*<f*/45f/*>*/;
-        approachPower = /*<f*/1.7f/*>*/;
-        turnVelocity = /*<f*/6.1f/*>*/;
-        targetWeight = /*<f*/1f/*>*/;
-        obstacleWeight = /*<f*/10f/*>*/;
-        feelerDistance = /*<f*/20f/*>*/;
+        brakeAngle = /*<f*/4.15f/*>*/;
+        maxAngleSpd = /*<f*/54.39f/*>*/;
+        approachPower = /*<f*/1.44f/*>*/;
+        turnVelocity = /*<f*/6.05f/*>*/;
+        targetWeight = /*<f*/0.98f/*>*/;
+        obstacleWeight = /*<f*/9.17f/*>*/;
+        feelerDistance = /*<f*/13.49f/*>*/;
     }
 
     @Override

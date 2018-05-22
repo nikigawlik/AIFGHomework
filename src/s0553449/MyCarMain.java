@@ -12,15 +12,15 @@ import lenz.htw.ai4g.ai.Info;
 
 public class MyCarMain extends AI {
 
-	private static float BRAKE_ANGLE = 6.14f;
-	private static float MAX_ANGLE_SPD = 50f;
-	private static float APPROACH_POWER = 1.62f;
-	private static float TURN_VELOCITY = 6f;
+	protected float brakeAngle = 6.14f;
+	protected float maxAngleSpd = 50f;
+	protected float approachPower = 1.62f;
+	protected float turnVelocity = 6f;
 	
-	private static float TARGET_WEIGHT = 1f;
-	private static float OBSTACLE_WEIGHT = 10f;
+	protected float targetWeight = 1f;
+	protected float obstacleWeight = 10f;
 	
-	private float feelerDistance = 20f;
+	protected float feelerDistance = 20f;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
@@ -53,8 +53,8 @@ public class MyCarMain extends AI {
 		deltaX /= distanceToTarget;
 		deltaY /= distanceToTarget;
 		
-		deltaX *= TARGET_WEIGHT;
-		deltaY *= TARGET_WEIGHT;
+		deltaX *= targetWeight;
+		deltaY *= targetWeight;
 		
 		debugStr += "pre delta: " + deltaX + ", " + deltaY + "\n";
 		
@@ -76,8 +76,8 @@ public class MyCarMain extends AI {
 			
 			for(Polygon o : obstacles) {
 				if(o.contains(x + dX * feelerDistance, y + dY * feelerDistance) && !(i == 1 && firstCollided)) {
-					deltaX += invert * dY * OBSTACLE_WEIGHT;
-					deltaY += -invert * dX * OBSTACLE_WEIGHT;
+					deltaX += invert * dY * obstacleWeight;
+					deltaY += -invert * dX * obstacleWeight;
 
 					throttlemod = i == 0? -1f : 0.4f;
 					if (i == -1) {
@@ -104,10 +104,10 @@ public class MyCarMain extends AI {
 		
 		// the angular velocity we want to have (linear function)
 		float absDA = Math.abs(deltaAngle);
-		float targetAngleV = (float) Math.pow(absDA/BRAKE_ANGLE, APPROACH_POWER) * MAX_ANGLE_SPD;
+		float targetAngleV = (float) Math.pow(absDA/brakeAngle, approachPower) * maxAngleSpd;
 		targetAngleV *= Math.signum(deltaAngle);
 		// clamp
-		targetAngleV = Math.min(Math.max(targetAngleV, -MAX_ANGLE_SPD), MAX_ANGLE_SPD);
+		targetAngleV = Math.min(Math.max(targetAngleV, -maxAngleSpd), maxAngleSpd);
 		
 		steering = targetAngleV - info.getAngularVelocity();
 		
@@ -116,7 +116,7 @@ public class MyCarMain extends AI {
 			throttle = info.getMaxAcceleration();			
 		} else {
 			// We are turning, so we drive slower
-			float acc = Math.max(TURN_VELOCITY - info.getVelocity().length(), 0);
+			float acc = Math.max(turnVelocity - info.getVelocity().length(), 0);
 			throttle = acc;
 		}
 

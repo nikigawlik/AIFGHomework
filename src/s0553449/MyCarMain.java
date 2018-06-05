@@ -42,8 +42,14 @@ public class MyCarMain extends AI {
 	}
 
 	private void calculateGraph() {
-		ArrayList<Vector2f> points = new ArrayList<>();
 		// calculate outer points
+		Vector2f[] nodes = findNodes();
+
+		debugPoints = nodes;
+	}
+
+	private Vector2f[] findNodes() {
+		ArrayList<Vector2f> outputNodes = new ArrayList<>();
 		for (Polygon polygon : info.getTrack().getObstacles()) {
 			int n = polygon.npoints;
 			for(int i = 0; i < n; i++) {
@@ -58,12 +64,13 @@ public class MyCarMain extends AI {
 				Vector2f v2o = new Vector2f(-v2.y, v2.x);
 
 				if(Vector2f.dot(v1, v2o) > 0) {
-					points.add(p2);
+					outputNodes.add(p2);
 				}
 			}
 		}
 
-		debugPoints = points.toArray(debugPoints);
+		Vector2f[] array = new Vector2f[outputNodes.size()];
+		return outputNodes.toArray(array);
 	}
 
 	@Override

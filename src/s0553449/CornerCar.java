@@ -20,6 +20,11 @@ public class /*<n*/CornerCar/*>*/ extends MyCarMain{
     }
 
     @Override
+    protected void init() {
+        enlistForDevelopment();
+    }
+
+    @Override
     public String getName() {
         return /*<n*/"CornerCar"/*>*/;
     }

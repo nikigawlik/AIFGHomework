@@ -17,6 +17,11 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
     }
 
     @Override
+    protected void init() {
+        enlistForDevelopment();
+    }
+
+    @Override
     public String getName() {
         return /*<n*/"TemplateCar"/*>*/;
     }

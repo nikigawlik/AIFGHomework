@@ -36,7 +36,10 @@ public class MyCarMain extends AI {
 
 	public MyCarMain(Info info) {
 		super(info);
-		// enlistForDevelopment();
+		init();
+	}
+
+	protected void init() {
 		enlistForTournament(553449);
 		calculateGraph();
 	}

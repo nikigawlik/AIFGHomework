@@ -18,7 +18,7 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
 
     @Override
     protected void init() {
-        enlistForDevelopment();
+        enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
     }
 
     @Override

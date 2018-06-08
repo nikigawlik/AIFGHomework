@@ -6,7 +6,7 @@ import lenz.htw.ai4g.ai.DriverAction;
 import lenz.htw.ai4g.ai.Info;
 
 public class /*<n*/CornerCar/*>*/ extends MyCarMain{
-    protected Point corner = new Point(4000, 4000);
+    protected Point corner = new Point(-4000, 0);
 
     public /*<n*/CornerCar/*>*/(Info info) {
         super(info);
@@ -21,7 +21,7 @@ public class /*<n*/CornerCar/*>*/ extends MyCarMain{
 
     @Override
     protected void init() {
-        enlistForDevelopment();
+        enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
     }
 
     @Override

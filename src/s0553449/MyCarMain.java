@@ -4,8 +4,11 @@ import java.awt.Point;
 import java.awt.Polygon;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.lwjgl.opengl.GL11;
+// import static org.lwjgl.opengl.GL21.*;
+// import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.util.vector.Vector2f;
 
 import lenz.htw.ai4g.ai.AI;
@@ -23,6 +26,9 @@ public class MyCarMain extends AI {
 	protected float obstacleWeight = 10f;
 	
 	protected float feelerDistance = 20f;
+
+	// graph gen
+	protected float cornerOffset = 12f;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
@@ -32,7 +38,8 @@ public class MyCarMain extends AI {
 	private float y; 
 	private float[] debugXs;
 	private float[] debugYs;
-	private Vector2f[] debugPoints = new Vector2f[0];
+	private Vector2f[] debugPoints = new Vector2f[0]; // array of points to draw
+	private Vector2f[] debugLines = new Vector2f[0]; // array of lines to draw (in pairs)
 
 	public MyCarMain(Info info) {
 		super(info);
@@ -47,12 +54,50 @@ public class MyCarMain extends AI {
 	private void calculateGraph() {
 		// calculate outer points
 		Vector2f[] nodes = findNodes();
+		// calculate edges
+		float[][] adjMatrix = new float[nodes.length][nodes.length];
 
+		ArrayList<Vector2f> lineList = new ArrayList<>();
+
+		// for all possible edges check if connected, remember cost
+		// (euclidian distance) in adjacency matrix.
+		for(int i = 0; i < nodes.length; i++) {
+			for(int j = 0; j < nodes.length; j++) {
+				Vector2f root = new Vector2f(nodes[i]);
+				Vector2f dir = new Vector2f(nodes[j]);
+				Vector2f.sub(dir, root, dir); // calculate direction vector
+
+				if (!intersectLineLevel(root, dir) && !(i==j)) {
+					adjMatrix[i][j] = dir.length();
+					lineList.add(nodes[i]);
+					lineList.add(nodes[j]);
+				} else {
+					adjMatrix[i][j] = -1; // negative == no connection
+				}
+			}
+		}
+
+		debugLines = lineList.toArray(debugLines);
 		debugPoints = nodes;
 	}
 
-	private Vector2f[] findNodes() {
-		ArrayList<Vector2f> outputNodes = new ArrayList<>();
+	private boolean intersectLineLevel(Vector2f root, Vector2f dir) {
+		for (Polygon polygon : info.getTrack().getObstacles()) {
+			int n = polygon.npoints;
+			for(int i = 0; i < n; i++) {
+				Vector2f root2 = new Vector2f(polygon.xpoints[i], polygon.ypoints[i]);
+				Vector2f dir2 = new Vector2f(polygon.xpoints[(i+1)%n], polygon.ypoints[(i+1)%n]);
+				Vector2f.sub(dir2, root2, dir2);
+
+				if(GeometryUtils.intersectLineSegments(root, dir, root2, dir2) != null)
+					return true;
+			}
+		}
+		return false;
+	}
+
+	private Node[] findNodes() {
+		HashSet<Vector2f> outputNodes = new HashSet<>();
 		for (Polygon polygon : info.getTrack().getObstacles()) {
 			int n = polygon.npoints;
 			for(int i = 0; i < n; i++) {
@@ -63,16 +108,23 @@ public class MyCarMain extends AI {
 				Vector2f v1 = new Vector2f();
 				Vector2f.sub(p1, p2, v1);
 				Vector2f v2 = new Vector2f();
-				Vector2f.sub(p3, p1, v2);
+				Vector2f.sub(p3, p2, v2);
 				Vector2f v2o = new Vector2f(-v2.y, v2.x);
-
+			
 				if(Vector2f.dot(v1, v2o) > 0) {
-					outputNodes.add(p2);
+					v1.normalise();
+					v2.normalise();
+					Vector2f offset = new Vector2f();
+					Vector2f.add(v1, v2, offset);
+					offset.normalise();
+					offset.scale(-cornerOffset);
+					Vector2f.add(p2, offset, p2);
+					outputNodes.add(new Node(p2, v1));
 				}
 			}
 		}
 
-		Vector2f[] array = new Vector2f[outputNodes.size()];
+		Node[] array = new Node[outputNodes.size()];
 		return outputNodes.toArray(array);
 	}
 
@@ -182,6 +234,7 @@ public class MyCarMain extends AI {
 	
 	@Override
 	public void doDebugStuff() {
+		
 		if(debugStr.compareTo("") != 0) {
 			System.out.println(debugStr);
 		}
@@ -203,8 +256,26 @@ public class MyCarMain extends AI {
 			for (Vector2f p : debugPoints) {
 				GL11.glVertex2d(p.x, p.y);
 			}
+			GL11.glVertex2d(0, 1000);
+			GL11.glVertex2d(1000, 1000);
+			GL11.glVertex2d(1000, 0);
+			GL11.glVertex2d(0, 0);
 			GL11.glEnd();
 		}
+		
+		// glPopMatrix();
+		// glPushMatrix();
+
+		if (debugLines != null) {
+			GL11.glColor3f(0f, 0f, 0f);
+			GL11.glBegin(GL11.GL_LINES);
+			for (Vector2f p : debugLines) {
+				GL11.glVertex2d(p.x, p.y);
+			}
+			GL11.glEnd();
+		}
+
+		// glPopMatrix();
 	}
 
 

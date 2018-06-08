@@ -28,16 +28,23 @@ public class GeometryUtils {
     }
 
     public static boolean pointInRectangle(Vector2f point, Vector2f rectRoot, Vector2f rectDim) {
-        if(rectDim.x < 0) {
-            rectRoot.setX(rectRoot.x + rectDim.x);
-            rectDim.setX(-rectDim.x);
+        float x1 = rectRoot.x;
+        float y1 = rectRoot.y;
+        float x2 = rectRoot.x + rectDim.x;
+        float y2 = rectRoot.y + rectDim.y;
+
+        float buffer;
+        if(x1 > x2) {
+            buffer = x1;
+            x1 = x2;
+            x2 = buffer;
         }
-        if(rectDim.y < 0) {
-            rectRoot.setY(rectRoot.y + rectDim.y);
-            rectDim.setY(-rectDim.y);
+        if(y1 > y2) {
+            buffer = y1;
+            y1 = y2;
+            y2 = buffer;
         }
-        Vector2f p2 = new Vector2f();
-        Vector2f.add(rectRoot, rectDim, p2);
-        return point.x >= rectRoot.x && point.x <= p2.x && point.y >= rectRoot.y && point.y <= p2.y;
+        
+        return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
     }
 }

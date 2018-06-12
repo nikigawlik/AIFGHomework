@@ -3,13 +3,13 @@ package s0553449;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lwjgl.opengl.GL11;
 // import static org.lwjgl.opengl.GL21.*;
 // import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.util.vector.Vector2f;
+import org.lwjgl.util.vector.Vector4f;
 
 import lenz.htw.ai4g.ai.AI;
 import lenz.htw.ai4g.ai.DriverAction;
@@ -27,19 +27,22 @@ public class MyCarMain extends AI {
 	
 	protected float feelerDistance = 20f;
 
-	// graph gen
-	protected float cornerOffset = 12f;
+	// pathfinding related
+	protected float cornerOffset = 4f;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
 	
+	private LevelGraph levelGraph; // graph without start and goal nodes
+	private Node currentGoal;
+
 	// display specific stuff
 	private float x;
 	private float y; 
 	private float[] debugXs;
 	private float[] debugYs;
 	private Vector2f[] debugPoints = new Vector2f[0]; // array of points to draw
-	private Vector2f[] debugLines = new Vector2f[0]; // array of lines to draw (in pairs)
+	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw (in pairs)
 
 	public MyCarMain(Info info) {
 		super(info);
@@ -53,47 +56,13 @@ public class MyCarMain extends AI {
 
 	private void calculateGraph() {
 		// calculate outer points
-		Vector2f[] nodes = findNodes();
+		Node[] nodes = findNodes();
+		levelGraph = new LevelGraph(nodes, info.getTrack().getObstacles());
 		// calculate edges
-		float[][] adjMatrix = new float[nodes.length][nodes.length];
+		levelGraph.calculateVisibilityGraph();
 
-		ArrayList<Vector2f> lineList = new ArrayList<>();
-
-		// for all possible edges check if connected, remember cost
-		// (euclidian distance) in adjacency matrix.
-		for(int i = 0; i < nodes.length; i++) {
-			for(int j = 0; j < nodes.length; j++) {
-				Vector2f root = new Vector2f(nodes[i]);
-				Vector2f dir = new Vector2f(nodes[j]);
-				Vector2f.sub(dir, root, dir); // calculate direction vector
-
-				if (!intersectLineLevel(root, dir) && !(i==j)) {
-					adjMatrix[i][j] = dir.length();
-					lineList.add(nodes[i]);
-					lineList.add(nodes[j]);
-				} else {
-					adjMatrix[i][j] = -1; // negative == no connection
-				}
-			}
-		}
-
-		debugLines = lineList.toArray(debugLines);
+		debugLines = levelGraph.getEdges();
 		debugPoints = nodes;
-	}
-
-	private boolean intersectLineLevel(Vector2f root, Vector2f dir) {
-		for (Polygon polygon : info.getTrack().getObstacles()) {
-			int n = polygon.npoints;
-			for(int i = 0; i < n; i++) {
-				Vector2f root2 = new Vector2f(polygon.xpoints[i], polygon.ypoints[i]);
-				Vector2f dir2 = new Vector2f(polygon.xpoints[(i+1)%n], polygon.ypoints[(i+1)%n]);
-				Vector2f.sub(dir2, root2, dir2);
-
-				if(GeometryUtils.intersectLineSegments(root, dir, root2, dir2) != null)
-					return true;
-			}
-		}
-		return false;
 	}
 
 	private Node[] findNodes() {
@@ -131,6 +100,14 @@ public class MyCarMain extends AI {
 	@Override
 	public DriverAction update(boolean arg0) {
 		debugStr = "";
+
+		Point checkpoint = info.getCurrentCheckpoint();
+		Node node = new Node(checkpoint.x, checkpoint.y, 0, 0);
+
+		if(currentGoal == null || !node.equals(currentGoal)) {
+			// recalculate current path
+
+		}
 		
 		return doSteering();
 	}
@@ -231,7 +208,7 @@ public class MyCarMain extends AI {
 	protected Point getCurrentCheckpoint() {
 		return info.getCurrentCheckpoint();
 	}
-	
+
 	@Override
 	public void doDebugStuff() {
 		
@@ -269,8 +246,9 @@ public class MyCarMain extends AI {
 		if (debugLines != null) {
 			GL11.glColor3f(0f, 0f, 0f);
 			GL11.glBegin(GL11.GL_LINES);
-			for (Vector2f p : debugLines) {
+			for (Vector4f p : debugLines) {
 				GL11.glVertex2d(p.x, p.y);
+				GL11.glVertex2d(p.z, p.w);
 			}
 			GL11.glEnd();
 		}

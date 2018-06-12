@@ -44,6 +44,8 @@ public class MyCarMain extends AI {
 	private Vector2f[] debugPoints = new Vector2f[0]; // array of points to draw
 	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw (in pairs)
 
+	private Node[] currentPath;
+
 	public MyCarMain(Info info) {
 		super(info);
 		init();
@@ -57,6 +59,7 @@ public class MyCarMain extends AI {
 	private void calculateGraph() {
 		// calculate outer points
 		Node[] nodes = findNodes();
+		System.out.println("create level graph!");
 		levelGraph = new LevelGraph(nodes, info.getTrack().getObstacles());
 		// calculate edges
 		levelGraph.calculateVisibilityGraph();
@@ -104,9 +107,12 @@ public class MyCarMain extends AI {
 		Point checkpoint = info.getCurrentCheckpoint();
 		Node node = new Node(checkpoint.x, checkpoint.y, 0, 0);
 
-		if(currentGoal == null || !node.equals(currentGoal)) {
-			// recalculate current path
+		if(levelGraph != null && (currentGoal == null || !node.equals(currentGoal))) {
+			currentGoal = node;
+			Vector2f currentPos = new Vector2f(info.getX(), info.getY());
 
+			// recalculate current path
+			currentPath = levelGraph.findPath(currentPos, currentGoal);
 		}
 		
 		return doSteering();
@@ -249,6 +255,15 @@ public class MyCarMain extends AI {
 			for (Vector4f p : debugLines) {
 				GL11.glVertex2d(p.x, p.y);
 				GL11.glVertex2d(p.z, p.w);
+			}
+			GL11.glEnd();
+		}
+
+		if (currentPath != null) {
+			GL11.glColor3f(0f, 0f, 1f);
+			GL11.glBegin(GL11.GL_LINE_STRIP);
+			for (Vector2f p : currentPath) {
+				GL11.glVertex2d(p.x, p.y);
 			}
 			GL11.glEnd();
 		}

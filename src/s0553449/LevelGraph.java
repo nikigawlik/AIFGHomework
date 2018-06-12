@@ -2,6 +2,10 @@ package s0553449;
 
 import java.awt.Polygon;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector4f;
@@ -32,12 +36,37 @@ public class LevelGraph {
             connections = new ArrayList<>();
         }
 
+        public GraphNode(Vector2f vec) {
+            this.x = vec.x;
+            this.y = vec.y;
+            this.normal = new Vector2f(0f, 0f);
+
+            connections = new ArrayList<>();
+        }
+
         public void addConnection(GraphNode target, float cost, boolean symmetric) {
             connections.add(new Connection(target, cost));
             if(symmetric) {
                 target.addConnection(this, cost, false);
             }
         }
+
+        public ArrayList<Connection> getConnections() {
+            return connections;
+        }
+    }
+
+    private class HashMapComparator implements Comparator<GraphNode> {
+        private HashMap<GraphNode, Float> hashMap;
+        public HashMapComparator(HashMap<GraphNode, Float> hashMap) {
+            this.hashMap = hashMap;
+        }
+
+		@Override
+		public int compare(GraphNode o1, GraphNode o2) {
+            
+            return hashMap.get(o1).compareTo(hashMap.get(o2));
+		}   
     }
 
     private ArrayList<GraphNode> nodes;
@@ -62,8 +91,12 @@ public class LevelGraph {
 
 		// for all possible edges check if connected, remember cost
 		for(GraphNode n1 : nodes) {
-			for(GraphNode n2 : nodes) {
+			calculateVisibilitiesForNode(n1);
+		}
+    }
 
+	private void calculateVisibilitiesForNode(GraphNode n1) {
+		for(GraphNode n2 : nodes) {
 				Vector2f root = new Vector2f(n1);
 				Vector2f dir = new Vector2f(n2);
 				Vector2f.sub(dir, root, dir); // calculate direction vector
@@ -72,10 +105,9 @@ public class LevelGraph {
                     n1.addConnection(n2, dir.length(), true);
 					// debug info
 					edgeList.add(new Vector4f(n1.x, n1.y, n2.x, n2.y));
-				} 
+				}
 			}
-		}
-    }
+	}
 
 	private boolean intersectLineLevel(Vector2f root, Vector2f dir) {
 		for (Polygon polygon : obstacles) {
@@ -95,5 +127,107 @@ public class LevelGraph {
     public Vector4f[] getEdges() {
         Vector4f[] edgeArray = new Vector4f[edgeList.size()];
         return edgeList.toArray(edgeArray);
+    }
+
+    public Node[] findPath(Vector2f start, Vector2f goal) {
+        GraphNode startNode = new GraphNode(start);
+        GraphNode goalNode = new GraphNode(goal);
+
+        nodes.add(startNode);
+        nodes.add(goalNode);
+
+        calculateVisibilitiesForNode(startNode);
+        calculateVisibilitiesForNode(goalNode);
+
+        return aStar(startNode, goalNode);
+    }
+
+    private Node[] aStar(GraphNode start, GraphNode goal) {
+        // The set of nodes already evaluated
+        HashSet<GraphNode> closedSet = new HashSet<>();
+    
+        // The set of currently discovered nodes that are not evaluated yet.
+        // Initially, only the start node is known.
+        HashSet<GraphNode> openSet = new HashSet<>();
+        openSet.add(start);
+    
+        // For each node, which node it can most efficiently be reached from.
+        // If a node can be reached from many nodes, cameFrom will eventually contain the
+        // most efficient previous step.
+        HashMap<GraphNode, GraphNode> cameFrom = new HashMap<>();
+    
+        // For each node, the cost of getting from the start node to that node.
+        HashMap<GraphNode, Float> gScore = new HashMap<>();
+        for (GraphNode node : nodes) {
+            gScore.put(node, Float.POSITIVE_INFINITY);
+        }
+    
+        // The cost of going from start to start is zero.
+        gScore.put(start, 0f);
+    
+        // For each node, the total cost of getting from the start node to the goal
+        // by passing by that node. That value is partly known, partly heuristic.
+        HashMap<GraphNode, Float> fScore = new HashMap<>();
+        for (GraphNode node : nodes) {
+            fScore.put(node, Float.POSITIVE_INFINITY);
+        }
+    
+        // For the first node, that value is completely heuristic.
+        fScore.put(start, heuristic_cost_estimate(start, goal));
+
+        Comparator<GraphNode> fScoreComparator = new HashMapComparator(fScore);
+    
+        while(!openSet.isEmpty()) {
+            // current := the node in openSet having the lowest fScore[] value
+            GraphNode current = Collections.min(openSet, fScoreComparator);
+            if (current == goal)
+                return reconstruct_path(cameFrom, current);
+            
+            openSet.remove(current);
+            closedSet.add(current);
+            
+            // for each neighbor of current
+            for (Connection connection : current.getConnections()) {
+                GraphNode neighbor = connection.target;
+                if(closedSet.contains(neighbor))
+                    continue;		// Ignore the neighbor which is already evaluated.
+                
+                if (!openSet.contains(neighbor)) // Discover a new node
+                    openSet.add(neighbor);
+                
+                // The distance from start to a neighbor
+                // the "dist_between" function may vary as per the solution requirements.
+                float tentative_gScore = gScore.get(current) + connection.cost;
+                if (tentative_gScore >= gScore.get(neighbor))
+                    continue;		// This is not a better path.
+                
+                // This path is the best until now. Record it!
+                cameFrom.put(neighbor, current);
+                gScore.put(neighbor, tentative_gScore);
+                fScore.put(neighbor, gScore.get(neighbor) + heuristic_cost_estimate(neighbor, goal));
+            }
+        }
+            
+        return null;
+    }
+
+    private float heuristic_cost_estimate(GraphNode n1, GraphNode n2) {
+        Vector2f dif = new Vector2f();
+        Vector2f.sub(n2, n1, dif);
+        return dif.length();
+    }
+    
+    private Node[] reconstruct_path(HashMap<GraphNode, GraphNode> cameFrom, GraphNode current) {
+        ArrayList<GraphNode> total_path = new ArrayList<>();
+        total_path.add(current);
+
+        while(cameFrom.containsKey(current)) {
+            current = cameFrom.get(current);
+            total_path.add(current);
+        }
+
+        Node[] nodeArray = new Node[total_path.size()];
+
+        return total_path.toArray(nodeArray);
     }
 }

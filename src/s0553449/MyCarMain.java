@@ -4,6 +4,7 @@ import java.awt.Point;
 import java.awt.Polygon;
 import java.text.DecimalFormat;
 import java.util.HashSet;
+import java.util.LinkedList;
 
 import org.lwjgl.opengl.GL11;
 // import static org.lwjgl.opengl.GL21.*;
@@ -29,7 +30,7 @@ public class MyCarMain extends AI {
 
 	// pathfinding related
 	protected float cornerOffset = 4f;
-	protected float cornerPostOffset = 12f;
+	protected float cornerPostOffset = 20f;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
@@ -46,6 +47,7 @@ public class MyCarMain extends AI {
 	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw (in pairs)
 
 	private Node[] currentPath;
+	private int currentPathPoint;
 
 	public MyCarMain(Info info) {
 		super(info);
@@ -115,16 +117,77 @@ public class MyCarMain extends AI {
 			Vector2f currentPos = new Vector2f(info.getX(), info.getY());
 
 			// recalculate current path
-			currentPath = levelGraph.findPath(currentPos, currentGoal);
-			// apply normal adjustment
-			for(Node n : currentPath) {
-				Vector2f offset = new Vector2f(n.normal);
-				offset.scale(cornerPostOffset);
-				Vector2f.add(n, offset, n);
+			Node[] path = levelGraph.findPath(currentPos, currentGoal);
+			// for (Node n : path) {
+			// 	Vector2f offset = new Vector2f(n.normal);
+			// 	offset.scale(cornerPostOffset);
+			// 	Vector2f.add(n, offset, n);
+			// }
+
+			// LinkedList<Node> list = new LinkedList<>(Arrays.asList(path));
+			LinkedList<Node> list = new LinkedList<>();
+
+			list.add(path[0]);
+			for(int i = 1; i < path.length - 1; i++) {
+				Node prev = path[i-1];
+				Node cur = path[i];
+				Node next = path[i+1];
+
+				Vector2f p1 = new Vector2f(cur);
+				Vector2f.sub(p1, next, p1);
+				p1.normalise();
+				p1.scale(cornerPostOffset);
+				Vector2f.add(p1, cur, p1);
+
+				Vector2f p2 = new Vector2f(cur);
+				Vector2f.sub(p2, prev, p2);
+				p2.normalise();
+				p2.scale(cornerPostOffset);
+				Vector2f.add(p2, cur, p2);
+
+				list.add(new Node(p1, cur.normal));
+				list.add(new Node(p2, cur.normal));
 			}
+			list.add(path[path.length - 1]);
+
+
+			// modify the graph to have many points and smooth it out
+			list = smoothNodes(list, 0);
+
+			currentPath = list.toArray(path);
+			currentPathPoint = 0;
 		}
 		
 		return doSteering();
+	}
+
+	private LinkedList<Node> smoothNodes(LinkedList<Node> list, int steps) {
+		for(int step = 0; step < steps; step++) {
+				LinkedList<Node> newList = new LinkedList<>();
+				newList.add(list.getFirst());
+				for(int i = 1; i < list.size() - 1; i++) {
+					Node prevNode = list.get(i-1);
+					Node curNode = list.get(i);
+					Node nextNode = list.get(i+1);
+
+					Vector2f p1 = new Vector2f(curNode);
+					Vector2f.sub(p1, prevNode, p1);
+					p1.scale(0.75f);
+					Vector2f.add(p1, prevNode, p1);
+
+					Vector2f p2 = new Vector2f(nextNode);
+					Vector2f.sub(p2, curNode, p2);
+					p2.scale(0.25f);
+					Vector2f.add(p2, curNode, p2);
+
+					newList.add(new Node(p1, curNode.normal));
+					newList.add(new Node(p2, curNode.normal));
+				}
+				newList.add(list.getLast());
+
+				list = newList;
+			}
+		return list;
 	}
 
 	private DriverAction doSteering() {
@@ -258,15 +321,15 @@ public class MyCarMain extends AI {
 		// glPopMatrix();
 		// glPushMatrix();
 
-		if (debugLines != null) {
-			GL11.glColor3f(0f, 0f, 0f);
-			GL11.glBegin(GL11.GL_LINES);
-			for (Vector4f p : debugLines) {
-				GL11.glVertex2d(p.x, p.y);
-				GL11.glVertex2d(p.z, p.w);
-			}
-			GL11.glEnd();
-		}
+		// if (debugLines != null) {
+		// 	GL11.glColor3f(0f, 0f, 0f);
+		// 	GL11.glBegin(GL11.GL_LINES);
+		// 	for (Vector4f p : debugLines) {
+		// 		GL11.glVertex2d(p.x, p.y);
+		// 		GL11.glVertex2d(p.z, p.w);
+		// 	}
+		// 	GL11.glEnd();
+		// }
 
 		if (currentPath != null) {
 			GL11.glColor3f(0f, 0f, 1f);

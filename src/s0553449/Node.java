@@ -19,7 +19,7 @@ public class Node extends Vector2f {
 
     public Node(Node node) {
         super(node.x, node.y);
-        this.normal = node.normal;
+        this.normal = new Vector2f(node.normal);
     }
 
     public Node(Vector2f vec, Vector2f normal) {

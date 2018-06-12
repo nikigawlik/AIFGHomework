@@ -27,6 +27,8 @@ public class MyCarMain extends AI {
 	protected float obstacleWeight = 10f;
 	
 	protected float feelerDistance = 20f;
+	protected float feelerDistanceSides = 10f;
+	protected float feelerAngle = (float) Math.PI/4;
 
 	// pathfinding related
 	protected float cornerOffset = 4f;
@@ -60,7 +62,7 @@ public class MyCarMain extends AI {
 		calculateGraph();
 	}
 
-	private void calculateGraph() {
+	protected void calculateGraph() {
 		// calculate outer points
 		Node[] nodes = findNodes();
 		System.out.println("create level graph!");
@@ -221,14 +223,16 @@ public class MyCarMain extends AI {
 		boolean firstCollided = false;
 		
 		for(int i = -1; i <= 1; i++) {
-			float angle = i * (float) Math.PI/4;
+			float angle = i * feelerAngle;
 			float absAngle = info.getOrientation() + angle;
 			float dX = (float) Math.cos(absAngle);
 			float dY = (float) Math.sin(absAngle);
 			float invert = (float) Math.signum(i);
+
+			float fd = i == 0? feelerDistance : feelerDistanceSides;
 			
 			for(Polygon o : obstacles) {
-				if(o.contains(x + dX * feelerDistance, y + dY * feelerDistance) && !(i == 1 && firstCollided)) {
+				if(o.contains(x + dX * fd, y + dY * fd) && !(i == 1 && firstCollided)) {
 					deltaX += invert * dY * obstacleWeight;
 					deltaY += -invert * dX * obstacleWeight;
 
@@ -239,8 +243,8 @@ public class MyCarMain extends AI {
 				}
 			}
 			
-			debugXs[i+1] = x + dX * feelerDistance;
-			debugYs[i+1] = y + dY * feelerDistance;
+			debugXs[i+1] = x + dX * fd;
+			debugYs[i+1] = y + dY * fd;
 		}
 
 		// debugStr += "post delta: " + deltaX + ", " + deltaY + "\n";

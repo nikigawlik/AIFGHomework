@@ -233,6 +233,8 @@ public class LevelGraph {
             total_path.add(current);
         }
 
+        Collections.reverse(total_path);
+
         Node[] nodeArray = new Node[total_path.size()];
 
         return total_path.toArray(nodeArray);

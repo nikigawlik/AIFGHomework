@@ -31,6 +31,7 @@ public class MyCarMain extends AI {
 	// pathfinding related
 	protected float cornerOffset = 4f;
 	protected float cornerPostOffset = 20f;
+	protected float pointReachRadius = 20f;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
@@ -194,9 +195,11 @@ public class MyCarMain extends AI {
 		float throttle = info.getMaxAcceleration();
 		float steering = 0f;
 		
-		Point ncp = getCurrentCheckpoint();
 		x = info.getX();
 		y = info.getY();
+
+		Point ncp = getCurrentTargetPoint();
+
 		float deltaX = ncp.x - x;
 		float deltaY = ncp.y - y;
 		float distanceToTarget = (float) Math.sqrt(deltaX*deltaX + deltaY*deltaY);
@@ -283,8 +286,25 @@ public class MyCarMain extends AI {
 		return new DriverAction(throttle, steering);
 	}
 
-	protected Point getCurrentCheckpoint() {
-		return info.getCurrentCheckpoint();
+	protected Point getCurrentTargetPoint() {
+		Point p = null;//info.getCurrentCheckpoint();
+
+		if(currentPath != null) {
+			Node curNode = currentPath[currentPathPoint];
+			// Node prevNode = currentPath[Math.max(currentPathPoint - 1, 0)];
+			while (Math.sqrt((curNode.x - x)*(curNode.x - x) + (curNode.y - y)*(curNode.y - y)) <= pointReachRadius) {
+				System.out.println("INCREASE");
+				if(currentPathPoint + 1 < currentPath.length) {
+					currentPathPoint++;
+					curNode = currentPath[currentPathPoint];
+				} else {
+					break;
+				}
+			}
+			p = new Point((int) curNode.x, (int) curNode.y);
+		}
+
+		return p;
 	}
 
 	@Override

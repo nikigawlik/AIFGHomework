@@ -21,7 +21,7 @@ public class /*<n*/CornerCar/*>*/ extends MyCarMain{
 
     @Override
     protected void init() {
-        enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
+        // enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
     }
 
     @Override
@@ -35,7 +35,7 @@ public class /*<n*/CornerCar/*>*/ extends MyCarMain{
     }
 
     @Override
-    protected Point getCurrentCheckpoint() {
+    protected Point getCurrentTargetPoint() {
         return corner;
     }
 }

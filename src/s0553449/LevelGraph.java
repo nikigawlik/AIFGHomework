@@ -139,7 +139,14 @@ public class LevelGraph {
         calculateVisibilitiesForNode(startNode);
         calculateVisibilitiesForNode(goalNode);
 
-        return aStar(startNode, goalNode);
+        // copy the path, because we don't want to pass references outwards
+        Node[] path = aStar(startNode, goalNode);
+        Node[] newPath = new Node[path.length];
+        for (int i = 0; i < path.length; i++) {
+            newPath[i] = new Node(path[i]);
+        }
+
+        return newPath;
     }
 
     private Node[] aStar(GraphNode start, GraphNode goal) {

@@ -29,6 +29,7 @@ public class MyCarMain extends AI {
 
 	// pathfinding related
 	protected float cornerOffset = 4f;
+	protected float cornerPostOffset = 12f;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
@@ -91,7 +92,9 @@ public class MyCarMain extends AI {
 					offset.normalise();
 					offset.scale(-cornerOffset);
 					Vector2f.add(p2, offset, p2);
-					outputNodes.add(new Node(p2, v1));
+					Vector2f normal = new Vector2f(v1);
+					normal.scale(-1f);
+					outputNodes.add(new Node(p2, normal));
 				}
 			}
 		}
@@ -113,6 +116,12 @@ public class MyCarMain extends AI {
 
 			// recalculate current path
 			currentPath = levelGraph.findPath(currentPos, currentGoal);
+			// apply normal adjustment
+			for(Node n : currentPath) {
+				Vector2f offset = new Vector2f(n.normal);
+				offset.scale(cornerPostOffset);
+				Vector2f.add(n, offset, n);
+			}
 		}
 		
 		return doSteering();

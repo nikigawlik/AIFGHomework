@@ -34,7 +34,8 @@ public class MyCarMain extends AI {
 	protected float cornerOffset = 30;
 	protected float cornerCalcMargin = 7f;
 	protected float cornerPostOffset = 10f;
-	protected float pointReachRadius = 20f;
+
+	protected float targetPointShift = 60f;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
@@ -293,16 +294,16 @@ public class MyCarMain extends AI {
 		Point p = null; //info.getCurrentCheckpoint();
 
 		Vector2f pPoint = new Vector2f(x, y);
-		Vector2f offset = new Vector2f(info.getVelocity());
-		if(offset.length() < 0.01f) {
-			return info.getCurrentCheckpoint(); // TODO elegant solution
-		} else {
-			offset.normalise();
-			offset.scale(10f);
-			Vector2f.add(offset, info.getVelocity(), offset);
-			offset.scale(2f);
-		}
-		Vector2f.add(pPoint, offset, pPoint);
+		// Vector2f offset = new Vector2f(info.getVelocity());
+		// if(offset.length() < 0.01f) {
+		// 	return info.getCurrentCheckpoint(); // TODO elegant solution
+		// } else {
+		// 	offset.normalise();
+		// 	offset.scale(10f);
+		// 	Vector2f.add(offset, info.getVelocity(), offset);
+		// 	offset.scale(2f);
+		// }
+		// Vector2f.add(pPoint, offset, pPoint);
 
 		if(currentPath != null) {
 			int minNodeIndex = 0;
@@ -320,12 +321,15 @@ public class MyCarMain extends AI {
 			}
 
 			Vector2f target;
+			int beforeIndex;
 
 			if(minNodeIndex == 0) {
 				target = GeometryUtils.projectPointOnLine(currentPath[0], currentPath[1], pPoint);
+				beforeIndex = 0;
 			} else if(minNodeIndex == currentPath.length - 1) {
 				target = GeometryUtils.projectPointOnLine(
 					currentPath[minNodeIndex-1], currentPath[minNodeIndex], pPoint);
+					beforeIndex = minNodeIndex-1;
 			} else {
 				Vector2f target1 = GeometryUtils.projectPointOnLine(
 					currentPath[minNodeIndex-1], currentPath[minNodeIndex], pPoint);
@@ -334,15 +338,43 @@ public class MyCarMain extends AI {
 				
 				if(GeometryUtils.distanceBetweenPoints(target1, pPoint) < GeometryUtils.distanceBetweenPoints(target2, pPoint)) {
 					target = target1;
+					beforeIndex = minNodeIndex-1;
 				} else {
 					target = target2;
+					beforeIndex = minNodeIndex;
 				}
 			}
+
+			target = shiftPointAlongPath(currentPath, target, beforeIndex, targetPointShift);
 
 			return new Point((int) target.x, (int) target.y);
 		}
 
 		return p;
+	}
+
+	private Vector2f shiftPointAlongPath(Vector2f[] path, Vector2f p, int index, float distance) {
+		index++;
+		while(true) {
+			if(index >= path.length) {
+				return p;
+			}
+			Vector2f next = path[index];
+			float distToNext = GeometryUtils.distanceBetweenPoints(p, next);
+			if(distToNext > distance) {
+				// handle rest management
+				Vector2f dir = new Vector2f(next);
+				Vector2f.sub(dir, p, dir);
+				dir.normalise();
+				dir.scale(distance);
+				Vector2f.add(dir, p, dir);
+				return dir;
+			} else {
+				distance -= distToNext;
+				index++;
+			}
+			p = next;
+		}
 	}
 
 	@Override

@@ -1,12 +1,12 @@
 package s0553449;
 
-import java.awt.Point;
+import org.lwjgl.util.vector.Vector2f;
 
 import lenz.htw.ai4g.ai.DriverAction;
 import lenz.htw.ai4g.ai.Info;
 
 public class /*<n*/CornerCar/*>*/ extends MyCarMain{
-    protected Point corner = new Point(-4000, 0);
+    protected Vector2f corner = new Vector2f(-4000, 0);
 
     public /*<n*/CornerCar/*>*/(Info info) {
         super(info);
@@ -35,7 +35,7 @@ public class /*<n*/CornerCar/*>*/ extends MyCarMain{
     }
 
     @Override
-    protected Point getCurrentTargetPoint() {
+    protected Vector2f getCurrentTargetPoint() {
         return corner;
     }
 }

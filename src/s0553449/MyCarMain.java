@@ -200,7 +200,7 @@ public class MyCarMain extends AI {
 		x = info.getX();
 		y = info.getY();
 
-		Point ncp = getCurrentTargetPoint();
+		Vector2f ncp = getCurrentTargetPoint();
 
 		float deltaX = ncp.x - x;
 		float deltaY = ncp.y - y;
@@ -290,8 +290,8 @@ public class MyCarMain extends AI {
 		return new DriverAction(throttle, steering);
 	}
 
-	protected Point getCurrentTargetPoint() {
-		Point p = null; //info.getCurrentCheckpoint();
+	protected Vector2f getCurrentTargetPoint() {
+		Vector2f p = null; //info.getCurrentCheckpoint();
 
 		Vector2f pPoint = new Vector2f(x, y);
 		// Vector2f offset = new Vector2f(info.getVelocity());
@@ -347,7 +347,7 @@ public class MyCarMain extends AI {
 
 			target = shiftPointAlongPath(currentPath, target, beforeIndex, targetPointShift);
 
-			return new Point((int) target.x, (int) target.y);
+			return target;
 		}
 
 		return p;

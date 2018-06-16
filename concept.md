@@ -31,9 +31,8 @@
 
 
 Problems:
- - after explosion the path has to reset
- - steering will often get stuck on walls
+ - steering will often get stuck on walls or in donuts
 
- - path following is really shitty
-
+ x path following is really shitty
+ x after explosion the path has to reset
  x path will often clip corners -> expand polygons for collision detection

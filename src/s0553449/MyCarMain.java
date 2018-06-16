@@ -7,8 +7,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 import org.lwjgl.opengl.GL11;
-// import static org.lwjgl.opengl.GL21.*;
-// import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector4f;
 
@@ -36,6 +34,8 @@ public class MyCarMain extends AI {
 	protected float cornerPostOffset = 10f;
 
 	protected float targetPointShift = 60f;
+
+	protected boolean doDebug = true;
 	
 	private String debugStr = "";
 	DecimalFormat debugFormat = new DecimalFormat( "#,###,###,##0.0000" );
@@ -49,7 +49,7 @@ public class MyCarMain extends AI {
 	private float[] debugXs;
 	private float[] debugYs;
 	private Vector2f[] debugPoints = new Vector2f[0]; // array of points to draw
-	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw (in pairs)
+	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw
 
 	private Node[] currentPath;
 
@@ -75,6 +75,9 @@ public class MyCarMain extends AI {
 		debugPoints = nodes;
 	}
 
+	/**
+	 * extract corner points from level grometry to make up the level graph
+	 */
 	private Node[] findNodes() {
 		HashSet<Vector2f> outputNodes = new HashSet<>();
 		for (Polygon polygon : info.getTrack().getObstacles()) {
@@ -90,6 +93,7 @@ public class MyCarMain extends AI {
 				Vector2f.sub(p3, p2, v2);
 				Vector2f v2o = new Vector2f(-v2.y, v2.x);
 			
+				// test if inner angle of corner < 180 deg
 				if(Vector2f.dot(v1, v2o) > 0) {
 					v1.normalise();
 					v2.normalise();
@@ -120,17 +124,16 @@ public class MyCarMain extends AI {
 			currentGoal = node;
 			Vector2f currentPos = new Vector2f(info.getX(), info.getY());
 
-			// recalculate current path
+			// find path from here to there
 			Node[] path = levelGraph.findPath(currentPos, currentGoal);
-			// for (Node n : path) {
-			// 	Vector2f offset = new Vector2f(n.normal);
-			// 	offset.scale(cornerPostOffset);
-			// 	Vector2f.add(n, offset, n);
-			// }
 
-			// LinkedList<Node> list = new LinkedList<>(Arrays.asList(path));
+			// recalculate current path
+
 			LinkedList<Node> list = new LinkedList<>();
 
+			// split every corner into to corners and shift the 
+			// coneres along the edge normals to prepare this
+			// path for smoothing
 			list.add(path[0]);
 			for(int i = 1; i < path.length - 1; i++) {
 				Node prev = path[i-1];
@@ -164,6 +167,9 @@ public class MyCarMain extends AI {
 		return doSteering();
 	}
 
+	/**
+	 * smoothes the graph, turning it into a curve
+	 */
 	private LinkedList<Node> smoothNodes(LinkedList<Node> list, int steps) {
 		for(int step = 0; step < steps; step++) {
 				LinkedList<Node> newList = new LinkedList<>();
@@ -211,8 +217,6 @@ public class MyCarMain extends AI {
 		deltaX *= targetWeight;
 		deltaY *= targetWeight;
 		
-		// debugStr += "pre delta: " + deltaX + ", " + deltaY + "\n";
-		
 		Polygon[] obstacles = info.getTrack().getObstacles();
 		
 		debugXs = new float[3];
@@ -236,7 +240,7 @@ public class MyCarMain extends AI {
 					deltaX += invert * dY * obstacleWeight;
 					deltaY += -invert * dX * obstacleWeight;
 
-					throttlemod = i == 0? -1f : 0.4f;
+					throttlemod = i == 0? 0.1f : 0.4f;
 					if (i == -1) {
 						firstCollided = true;
 					}
@@ -270,7 +274,9 @@ public class MyCarMain extends AI {
 		
 		if (Math.abs(deltaAngle) < 1.57) {
 			// We are on target (more or less)
-			throttle = info.getMaxAcceleration();			
+			float velocity = turnVelocity + (1f-deltaAngle/1.57f) * turnVelocity*3f;
+			float acc = Math.max(velocity - info.getVelocity().length(), 0);
+			throttle = acc;		
 		} else {
 			// We are turning, so we drive slower
 			float acc = Math.max(turnVelocity - info.getVelocity().length(), 0);
@@ -379,39 +385,40 @@ public class MyCarMain extends AI {
 
 	@Override
 	public void doDebugStuff() {
-		
-		if(debugStr.compareTo("") != 0) {
-			System.out.println(debugStr);
-		}
-		
-		if (debugXs.length != 0) {
-			for (int i = 0; i < debugXs.length; i++) {
-				GL11.glColor3f(0.0f, 1.0f, 0.2f);
-				GL11.glBegin(GL11.GL_LINE_STRIP);
-		
-				GL11.glVertex2d(x, y);
-				GL11.glVertex2d(debugXs[i], debugYs[i]);
-				GL11.glEnd();
-			}
-		}
-		
-		// misc debug lines
-		GL11.glColor3f(1.0f, 0.2f, 0.0f);
-		GL11.glBegin(GL11.GL_LINES);
+		if(doDebug) {
 
-		GL11.glVertex2d(x, y);
-		GL11.glVertex2d(x + info.getVelocity().x, y + info.getVelocity().y);
-		GL11.glEnd();
+			if(debugStr.compareTo("") != 0) {
+				System.out.println(debugStr);
+			}
+			
+			if (debugXs != null && debugXs.length != 0) {
+				for (int i = 0; i < debugXs.length; i++) {
+					GL11.glColor3f(0.0f, 1.0f, 0.2f);
+					GL11.glBegin(GL11.GL_LINE_STRIP);
+					
+					GL11.glVertex2d(x, y);
+					GL11.glVertex2d(debugXs[i], debugYs[i]);
+					GL11.glEnd();
+				}
+			}
+			
+			// misc debug lines
+			GL11.glColor3f(1.0f, 0.2f, 0.0f);
+			GL11.glBegin(GL11.GL_LINES);
+			
+			GL11.glVertex2d(x, y);
+			GL11.glVertex2d(x + info.getVelocity().x, y + info.getVelocity().y);
+			GL11.glEnd();
 		
-		// misc debug points
+			// misc debug points
 		GL11.glColor3f(1.0f, 0.2f, 0.0f);
 		GL11.glPointSize(16f);
 		GL11.glBegin(GL11.GL_POINTS);
-
+		
 		GL11.glVertex2d(getCurrentTargetPoint().x, getCurrentTargetPoint().y);
 		GL11.glEnd();
 		GL11.glPointSize(8f);
-
+		
 		if(debugPoints != null) {
 			GL11.glColor3f(1f, 1f, 1f);
 			GL11.glBegin(GL11.GL_POINTS);
@@ -424,7 +431,7 @@ public class MyCarMain extends AI {
 			GL11.glVertex2d(0, 0);
 			GL11.glEnd();
 		}
-
+		
 		if (debugLines != null) {
 			GL11.glColor3f(0f, 0f, 0f);
 			GL11.glBegin(GL11.GL_LINES);
@@ -434,7 +441,7 @@ public class MyCarMain extends AI {
 			}
 			GL11.glEnd();
 		}
-
+		
 		if (currentPath != null) {
 			GL11.glColor3f(0f, 0f, 1f);
 			GL11.glBegin(GL11.GL_LINE_STRIP);
@@ -450,10 +457,9 @@ public class MyCarMain extends AI {
 			}
 			GL11.glEnd();
 		}
-
-		// glPopMatrix();
 	}
-
+}
+	
 
 	@Override
 	public String getName() {

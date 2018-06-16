@@ -27,3 +27,11 @@
         - increase current point
     - calculate target point as current point + rounded weighted speed
     - use steering to follow target point
+
+
+
+Problems:
+ - after explosion the path has to reset
+ - steering will often get stuck on walls
+ - path following is really shitty
+ - path will often clip corners -> expand polygons for collision detection

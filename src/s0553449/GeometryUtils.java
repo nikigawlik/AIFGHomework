@@ -47,4 +47,23 @@ public class GeometryUtils {
         
         return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
     }
+
+    public static Vector2f projectPointOnLine(Vector2f l1, Vector2f l2, Vector2f p) {
+        // return l2;
+
+        Vector2f n = new Vector2f();
+        Vector2f.sub(l2, l1, n);
+        n.normalise();
+        Vector2f p3 = new Vector2f(p);
+        Vector2f.sub(p3, l1, p3);
+
+        n.scale(Vector2f.dot(n, p3));
+        Vector2f.add(n, l1, n);
+
+        return n;
+    }
+
+    public static float distanceBetweenPoints(Vector2f p1, Vector2f p2) {
+        return (float) Math.sqrt((p2.x - p1.x)*(p2.x - p1.x) + (p2.y - p1.y)*(p2.y-p1.y));
+    }
 }

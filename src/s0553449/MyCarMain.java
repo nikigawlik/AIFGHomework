@@ -51,7 +51,6 @@ public class MyCarMain extends AI {
 	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw (in pairs)
 
 	private Node[] currentPath;
-	private int currentPathPoint;
 
 	public MyCarMain(Info info) {
 		super(info);
@@ -159,7 +158,6 @@ public class MyCarMain extends AI {
 			list = smoothNodes(list, 4);
 
 			currentPath = list.toArray(path);
-			currentPathPoint = 0;
 		}
 		
 		return doSteering();
@@ -292,21 +290,56 @@ public class MyCarMain extends AI {
 	}
 
 	protected Point getCurrentTargetPoint() {
-		Point p = null;//info.getCurrentCheckpoint();
+		Point p = null; //info.getCurrentCheckpoint();
+
+		Vector2f pPoint = new Vector2f(x, y);
+		Vector2f offset = new Vector2f(info.getVelocity());
+		if(offset.length() < 0.01f) {
+			return info.getCurrentCheckpoint(); // TODO elegant solution
+		} else {
+			offset.normalise();
+			offset.scale(10f);
+			Vector2f.add(offset, info.getVelocity(), offset);
+			offset.scale(2f);
+		}
+		Vector2f.add(pPoint, offset, pPoint);
 
 		if(currentPath != null) {
-			Node curNode = currentPath[currentPathPoint];
-			// Node prevNode = currentPath[Math.max(currentPathPoint - 1, 0)];
-			while (Math.sqrt((curNode.x - x)*(curNode.x - x) + (curNode.y - y)*(curNode.y - y)) <= pointReachRadius) {
-				// System.out.println("INCREASE");
-				if(currentPathPoint + 1 < currentPath.length) {
-					currentPathPoint++;
-					curNode = currentPath[currentPathPoint];
-				} else {
-					break;
+			int minNodeIndex = 0;
+			float minDist = Float.MAX_VALUE;
+
+			for(int i = 0; i < currentPath.length; i++) {
+				Node n = currentPath[i];
+
+				float dist = GeometryUtils.distanceBetweenPoints(n, pPoint);
+
+				if(dist < minDist) {
+					minDist = dist;
+					minNodeIndex = i;
 				}
 			}
-			p = new Point((int) curNode.x, (int) curNode.y);
+
+			Vector2f target;
+
+			if(minNodeIndex == 0) {
+				target = GeometryUtils.projectPointOnLine(currentPath[0], currentPath[1], pPoint);
+			} else if(minNodeIndex == currentPath.length - 1) {
+				target = GeometryUtils.projectPointOnLine(
+					currentPath[minNodeIndex-1], currentPath[minNodeIndex], pPoint);
+			} else {
+				Vector2f target1 = GeometryUtils.projectPointOnLine(
+					currentPath[minNodeIndex-1], currentPath[minNodeIndex], pPoint);
+				Vector2f target2 = GeometryUtils.projectPointOnLine(
+					currentPath[minNodeIndex], currentPath[minNodeIndex+1], pPoint);
+				
+				if(GeometryUtils.distanceBetweenPoints(target1, pPoint) < GeometryUtils.distanceBetweenPoints(target2, pPoint)) {
+					target = target1;
+				} else {
+					target = target2;
+				}
+			}
+
+			return new Point((int) target.x, (int) target.y);
 		}
 
 		return p;
@@ -340,10 +373,12 @@ public class MyCarMain extends AI {
 		
 		// misc debug points
 		GL11.glColor3f(1.0f, 0.2f, 0.0f);
+		GL11.glPointSize(16f);
 		GL11.glBegin(GL11.GL_POINTS);
 
 		GL11.glVertex2d(getCurrentTargetPoint().x, getCurrentTargetPoint().y);
 		GL11.glEnd();
+		GL11.glPointSize(8f);
 
 		if(debugPoints != null) {
 			GL11.glColor3f(1f, 1f, 1f);

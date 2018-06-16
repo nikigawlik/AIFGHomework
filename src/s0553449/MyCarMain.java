@@ -31,8 +31,9 @@ public class MyCarMain extends AI {
 	protected float feelerAngle = (float) Math.PI/4;
 
 	// pathfinding related
-	protected float cornerOffset = 4f;
-	protected float cornerPostOffset = 20f;
+	protected float cornerOffset = 30;
+	protected float cornerCalcMargin = 7f;
+	protected float cornerPostOffset = 10f;
 	protected float pointReachRadius = 20f;
 	
 	private String debugStr = "";
@@ -66,7 +67,7 @@ public class MyCarMain extends AI {
 		// calculate outer points
 		Node[] nodes = findNodes();
 		System.out.println("create level graph!");
-		levelGraph = new LevelGraph(nodes, info.getTrack().getObstacles());
+		levelGraph = new LevelGraph(nodes, info.getTrack().getObstacles(), cornerOffset - cornerCalcMargin);
 		// calculate edges
 		levelGraph.calculateVisibilityGraph();
 
@@ -92,13 +93,13 @@ public class MyCarMain extends AI {
 				if(Vector2f.dot(v1, v2o) > 0) {
 					v1.normalise();
 					v2.normalise();
-					Vector2f offset = new Vector2f();
-					Vector2f.add(v1, v2, offset);
-					offset.normalise();
-					offset.scale(-cornerOffset);
-					Vector2f.add(p2, offset, p2);
-					Vector2f normal = new Vector2f(v1);
+					Vector2f normal = new Vector2f();
+					Vector2f.add(v1, v2, normal);
+					normal.normalise();
 					normal.scale(-1f);
+					Vector2f offset = new Vector2f(normal);
+					offset.scale(cornerOffset);
+					Vector2f.add(p2, offset, p2);
 					outputNodes.add(new Node(p2, normal));
 				}
 			}
@@ -155,7 +156,7 @@ public class MyCarMain extends AI {
 
 
 			// modify the graph to have many points and smooth it out
-			list = smoothNodes(list, 0);
+			list = smoothNodes(list, 4);
 
 			currentPath = list.toArray(path);
 			currentPathPoint = 0;
@@ -297,7 +298,7 @@ public class MyCarMain extends AI {
 			Node curNode = currentPath[currentPathPoint];
 			// Node prevNode = currentPath[Math.max(currentPathPoint - 1, 0)];
 			while (Math.sqrt((curNode.x - x)*(curNode.x - x) + (curNode.y - y)*(curNode.y - y)) <= pointReachRadius) {
-				System.out.println("INCREASE");
+				// System.out.println("INCREASE");
 				if(currentPathPoint + 1 < currentPath.length) {
 					currentPathPoint++;
 					curNode = currentPath[currentPathPoint];
@@ -328,6 +329,21 @@ public class MyCarMain extends AI {
 				GL11.glEnd();
 			}
 		}
+		
+		// misc debug lines
+		GL11.glColor3f(1.0f, 0.2f, 0.0f);
+		GL11.glBegin(GL11.GL_LINES);
+
+		GL11.glVertex2d(x, y);
+		GL11.glVertex2d(x + info.getVelocity().x, y + info.getVelocity().y);
+		GL11.glEnd();
+		
+		// misc debug points
+		GL11.glColor3f(1.0f, 0.2f, 0.0f);
+		GL11.glBegin(GL11.GL_POINTS);
+
+		GL11.glVertex2d(getCurrentTargetPoint().x, getCurrentTargetPoint().y);
+		GL11.glEnd();
 
 		if(debugPoints != null) {
 			GL11.glColor3f(1f, 1f, 1f);
@@ -341,23 +357,27 @@ public class MyCarMain extends AI {
 			GL11.glVertex2d(0, 0);
 			GL11.glEnd();
 		}
-		
-		// glPopMatrix();
-		// glPushMatrix();
 
-		// if (debugLines != null) {
-		// 	GL11.glColor3f(0f, 0f, 0f);
-		// 	GL11.glBegin(GL11.GL_LINES);
-		// 	for (Vector4f p : debugLines) {
-		// 		GL11.glVertex2d(p.x, p.y);
-		// 		GL11.glVertex2d(p.z, p.w);
-		// 	}
-		// 	GL11.glEnd();
-		// }
+		if (debugLines != null) {
+			GL11.glColor3f(0f, 0f, 0f);
+			GL11.glBegin(GL11.GL_LINES);
+			for (Vector4f p : debugLines) {
+				GL11.glVertex2d(p.x, p.y);
+				GL11.glVertex2d(p.z, p.w);
+			}
+			GL11.glEnd();
+		}
 
 		if (currentPath != null) {
 			GL11.glColor3f(0f, 0f, 1f);
 			GL11.glBegin(GL11.GL_LINE_STRIP);
+			for (Vector2f p : currentPath) {
+				GL11.glVertex2d(p.x, p.y);
+			}
+			GL11.glEnd();
+			
+			GL11.glColor3f(.5f, .5f, 1f);
+			GL11.glBegin(GL11.GL_POINTS);
 			for (Vector2f p : currentPath) {
 				GL11.glVertex2d(p.x, p.y);
 			}

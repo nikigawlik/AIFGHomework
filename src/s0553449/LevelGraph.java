@@ -70,13 +70,15 @@ public class LevelGraph {
     }
 
     private ArrayList<GraphNode> nodes;
+    private float collisionDetectionOffset;
 
     private Polygon[] obstacles;
 
     private ArrayList<Vector4f> edgeList;
 
-    public LevelGraph(Node[] nodes, Polygon[] obstacles) {
+    public LevelGraph(Node[] nodes, Polygon[] obstacles, float normalExtension) {
         this.obstacles = obstacles;
+        this.collisionDetectionOffset = normalExtension;
         
         this.nodes = new ArrayList<>();
         for (Node node : nodes) {
@@ -113,15 +115,43 @@ public class LevelGraph {
 		for (Polygon polygon : obstacles) {
 			int n = polygon.npoints;
 			for(int i = 0; i < n; i++) {
-				Vector2f root2 = new Vector2f(polygon.xpoints[i], polygon.ypoints[i]);
-				Vector2f dir2 = new Vector2f(polygon.xpoints[(i+1)%n], polygon.ypoints[(i+1)%n]);
-				Vector2f.sub(dir2, root2, dir2);
+                Vector2f root2 = new Vector2f(polygon.xpoints[i], polygon.ypoints[i]);
+                Vector2f offsetR2 = polygonGetNormal(polygon, i);
+                offsetR2.scale(collisionDetectionOffset);
+                Vector2f.add(root2, offsetR2, root2);
+
+                Vector2f dest2 = new Vector2f(polygon.xpoints[(i+1)%n], polygon.ypoints[(i+1)%n]);
+                Vector2f offsetD2 = polygonGetNormal(polygon, i+1);
+                offsetD2.scale(collisionDetectionOffset);
+                Vector2f.add(dest2, offsetD2, dest2);
+
+                Vector2f dir2 = dest2; // for clarity
+                Vector2f.sub(dest2, root2, dir2);
 
 				if(GeometryUtils.intersectLineSegments(root, dir, root2, dir2) != null)
 					return true;
 			}
 		}
 		return false;
+    }
+
+    private Vector2f polygonGetNormal(Polygon polygon, int pointID) {
+        int n = polygon.npoints;
+        int i = (pointID - 1 + n) % n;
+        Vector2f p1 = new Vector2f(polygon.xpoints[i], polygon.ypoints[i]);
+        Vector2f p2 = new Vector2f(polygon.xpoints[(i+1)%n], polygon.ypoints[(i+1)%n]);
+        Vector2f p3 = new Vector2f(polygon.xpoints[(i+2)%n], polygon.ypoints[(i+2)%n]);
+
+        Vector2f v1 = new Vector2f();
+        Vector2f.sub(p1, p2, v1);
+        Vector2f v2 = new Vector2f();
+        Vector2f.sub(p3, p2, v2);
+        v1.normalise();
+        v2.normalise();
+        Vector2f.add(v1, v2, v1);
+        v1.normalise();
+        v1.scale(-1f);
+        return v1;
     }
 
     public Vector4f[] getEdges() {
@@ -141,6 +171,14 @@ public class LevelGraph {
 
         // copy the path, because we don't want to pass references outwards
         Node[] path = aStar(startNode, goalNode);
+
+        if(path == null) {
+            System.out.println("NO PATH FOUND!");
+            path = new Node[2];
+            path[0] = startNode;
+            path[1] = goalNode;
+        }
+
         Node[] newPath = new Node[path.length];
         for (int i = 0; i < path.length; i++) {
             newPath[i] = new Node(path[i]);

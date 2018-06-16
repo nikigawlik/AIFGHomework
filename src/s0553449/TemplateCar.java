@@ -17,7 +17,6 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
 
         cornerOffset = /*<f*/4f/*>*/;
         cornerPostOffset = /*<f*/20f/*>*/;
-        pointReachRadius = /*<f*/20f/*>*/;
     }
 
     @Override

@@ -22,6 +22,11 @@ public class Node extends Vector2f {
         this.normal = new Vector2f(node.normal);
     }
 
+    public Node(Vector2f vec) {
+        super(vec.x, vec.y);
+        this.normal = new Vector2f();
+    }
+
     public Node(Vector2f vec, Vector2f normal) {
         super(vec.x, vec.y);
         this.normal = normal;

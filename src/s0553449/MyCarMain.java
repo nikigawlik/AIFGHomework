@@ -119,53 +119,62 @@ public class MyCarMain extends AI {
 		debugStr = "";
 
 		Point checkpoint = info.getCurrentCheckpoint();
-		Node node = new Node(checkpoint.x, checkpoint.y, 0, 0);
+		Node checkpointNode = new Node(checkpoint.x, checkpoint.y, 0, 0);
 
-		if(levelGraph != null && (currentGoal == null || !node.equals(currentGoal))) {
-			currentGoal = node;
-			Vector2f currentPos = new Vector2f(info.getX(), info.getY());
-
-			// find path from here to there
-			Node[] path = levelGraph.findPath(currentPos, currentGoal);
-
-			// recalculate current path
-
-			LinkedList<Node> list = new LinkedList<>();
-
-			// split every corner into to corners and shift the 
-			// coneres along the edge normals to prepare this
-			// path for smoothing
-			list.add(path[0]);
-			for(int i = 1; i < path.length - 1; i++) {
-				Node prev = path[i-1];
-				Node cur = path[i];
-				Node next = path[i+1];
-
-				Vector2f p1 = new Vector2f(cur);
-				Vector2f.sub(p1, next, p1);
-				p1.normalise();
-				p1.scale(cornerPostOffset);
-				Vector2f.add(p1, cur, p1);
-
-				Vector2f p2 = new Vector2f(cur);
-				Vector2f.sub(p2, prev, p2);
-				p2.normalise();
-				p2.scale(cornerPostOffset);
-				Vector2f.add(p2, cur, p2);
-
-				list.add(new Node(p1, cur.normal));
-				list.add(new Node(p2, cur.normal));
-			}
-			list.add(path[path.length - 1]);
-
-
-			// modify the graph to have many points and smooth it out
-			list = smoothNodes(list, smoothingIterations);
-
-			currentPath = list.toArray(path);
+		if(levelGraph != null && (currentGoal == null || !checkpointNode.equals(currentGoal))) {
+			currentPath = calculatePathTo(checkpointNode);
 		}
 		
 		return doSteering();
+	}
+
+	private Node[] calculatePathTo(Node goal) {
+		currentGoal = goal;
+		Vector2f currentPos = new Vector2f(info.getX(), info.getY());
+
+		// find path from here to there
+		Node[] path = levelGraph.findPath(currentPos, currentGoal);
+		if(path == null) {
+			path = new Node[2];
+			path[0] = new Node(currentPos);
+			path[1] = new Node(currentGoal);
+		}
+
+		// recalculate current path
+
+		LinkedList<Node> list = new LinkedList<>();
+
+		// split every corner into to corners and shift the 
+		// coneres along the edge normals to prepare this
+		// path for smoothing
+		list.add(path[0]);
+		for(int i = 1; i < path.length - 1; i++) {
+			Node prev = path[i-1];
+			Node cur = path[i];
+			Node next = path[i+1];
+
+			Vector2f p1 = new Vector2f(cur);
+			Vector2f.sub(p1, next, p1);
+			p1.normalise();
+			p1.scale(cornerPostOffset);
+			Vector2f.add(p1, cur, p1);
+
+			Vector2f p2 = new Vector2f(cur);
+			Vector2f.sub(p2, prev, p2);
+			p2.normalise();
+			p2.scale(cornerPostOffset);
+			Vector2f.add(p2, cur, p2);
+
+			list.add(new Node(p1, cur.normal));
+			list.add(new Node(p2, cur.normal));
+		}
+		list.add(path[path.length - 1]);
+
+
+		// modify the graph to have many points and smooth it out
+		list = smoothNodes(list, smoothingIterations);
+
+		return list.toArray(path);
 	}
 
 	/**
@@ -304,17 +313,6 @@ public class MyCarMain extends AI {
 		Vector2f p = null; //info.getCurrentCheckpoint();
 
 		Vector2f pPoint = new Vector2f(x, y);
-		/* old code: scale towards velocity first */
-		// Vector2f offset = new Vector2f(info.getVelocity());
-		// if(offset.length() < 0.01f) {
-		// 	return info.getCurrentCheckpoint(); // TODO elegant solution
-		// } else {
-		// 	offset.normalise();
-		// 	offset.scale(10f);
-		// 	Vector2f.add(offset, info.getVelocity(), offset);
-		// 	offset.scale(2f);
-		// }
-		// Vector2f.add(pPoint, offset, pPoint);
 
 		if(currentPath != null) {
 			Vector2f minPoint = currentPath[0];
@@ -333,7 +331,13 @@ public class MyCarMain extends AI {
 				}
 			}
 
-			return shiftPointAlongPath(currentPath, minPoint, lineIndex, targetPointShift);
+			p = shiftPointAlongPath(currentPath, minPoint, lineIndex, targetPointShift);
+
+			// Removed: Causes lag and does not work reliably
+			// TODO: Find a way to implement this correctly
+			// if(levelGraph.testLineAgainstLevel(pPoint, p, false)) {
+			// 	currentPath = calculatePathTo(currentGoal);
+			// }
 		}
 
 		return p;

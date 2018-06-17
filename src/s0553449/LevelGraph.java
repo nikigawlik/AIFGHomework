@@ -26,7 +26,7 @@ public class LevelGraph {
 
     private class GraphNode extends Node {
         private static final long serialVersionUID = 8196766849155894066L;
-		private ArrayList<Connection> connections;
+        private ArrayList<Connection> connections;
 
         public GraphNode(Node node) {
             this.x = node.x;
@@ -69,7 +69,7 @@ public class LevelGraph {
 		}   
     }
 
-    private ArrayList<GraphNode> nodes;
+    private HashSet<GraphNode> nodes;
     private float collisionDetectionOffset;
 
     private Polygon[] obstacles;
@@ -80,7 +80,7 @@ public class LevelGraph {
         this.obstacles = obstacles;
         this.collisionDetectionOffset = normalExtension;
         
-        this.nodes = new ArrayList<>();
+        this.nodes = new HashSet<>();
         for (Node node : nodes) {
             this.nodes.add(new GraphNode(node));
         }
@@ -98,32 +98,46 @@ public class LevelGraph {
     }
 
 	private void calculateVisibilitiesForNode(GraphNode n1) {
-		for(GraphNode n2 : nodes) {
-				Vector2f root = new Vector2f(n1);
-				Vector2f dir = new Vector2f(n2);
-				Vector2f.sub(dir, root, dir); // calculate direction vector
+        calculateVisibilitiesForNode(n1, true);
+    }
 
-				if (!intersectLineLevel(root, dir) && !(n1==n2)) {
-                    n1.addConnection(n2, dir.length(), true);
-					// debug info
-					edgeList.add(new Vector4f(n1.x, n1.y, n2.x, n2.y));
-				}
-			}
-	}
+	private void calculateVisibilitiesForNode(GraphNode n1, boolean useOffset) {
+        for(GraphNode n2 : nodes) {
+            Vector2f root = new Vector2f(n1);
+            Vector2f dir = new Vector2f(n2);
+            Vector2f.sub(dir, root, dir); // calculate direction vector
+            
+            if (!intersectLineLevel(root, dir, useOffset) && !(n1.equals(n2))) {
+                n1.addConnection(n2, dir.length(), true);
+                // debug info
+                edgeList.add(new Vector4f(n1.x, n1.y, n2.x, n2.y));
+            }
+        }
+    }
+    
+    public boolean testLineAgainstLevel(Vector2f l1, Vector2f l2, boolean useOffset) {
+        Vector2f dir = new Vector2f();
+        Vector2f.sub(l2, l1, dir);
+        return intersectLineLevel(l1, dir, useOffset);
+    }
 
-	private boolean intersectLineLevel(Vector2f root, Vector2f dir) {
+	private boolean intersectLineLevel(Vector2f root, Vector2f dir, boolean useOffset) {
 		for (Polygon polygon : obstacles) {
 			int n = polygon.npoints;
 			for(int i = 0; i < n; i++) {
                 Vector2f root2 = new Vector2f(polygon.xpoints[i], polygon.ypoints[i]);
-                Vector2f offsetR2 = polygonGetNormal(polygon, i);
-                offsetR2.scale(collisionDetectionOffset);
-                Vector2f.add(root2, offsetR2, root2);
+                if(useOffset) {
+                    Vector2f offsetR2 = polygonGetNormal(polygon, i);
+                    offsetR2.scale(collisionDetectionOffset);
+                    Vector2f.add(root2, offsetR2, root2);
+                }
 
                 Vector2f dest2 = new Vector2f(polygon.xpoints[(i+1)%n], polygon.ypoints[(i+1)%n]);
-                Vector2f offsetD2 = polygonGetNormal(polygon, i+1);
-                offsetD2.scale(collisionDetectionOffset);
-                Vector2f.add(dest2, offsetD2, dest2);
+                if(useOffset) {
+                    Vector2f offsetD2 = polygonGetNormal(polygon, i+1);
+                    offsetD2.scale(collisionDetectionOffset);
+                    Vector2f.add(dest2, offsetD2, dest2);
+                }
 
                 Vector2f dir2 = dest2; // for clarity
                 Vector2f.sub(dest2, root2, dir2);
@@ -173,10 +187,16 @@ public class LevelGraph {
         Node[] path = aStar(startNode, goalNode);
 
         if(path == null) {
-            System.out.println("NO PATH FOUND!");
-            path = new Node[2];
-            path[0] = startNode;
-            path[1] = goalNode;
+            System.out.println("No Path found! Retrying without offset...");
+            calculateVisibilitiesForNode(startNode, false);
+            calculateVisibilitiesForNode(goalNode, false);
+
+            path = aStar(startNode, goalNode);
+            System.out.println("...failed still.");
+
+            if(path == null) {
+                return null;
+            }
         }
 
         Node[] newPath = new Node[path.length];

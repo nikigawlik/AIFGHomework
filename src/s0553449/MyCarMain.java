@@ -31,7 +31,8 @@ public class MyCarMain extends AI {
 	// pathfinding related
 	protected float cornerOffset = 30;
 	protected float cornerCalcMargin = 7f;
-	protected float cornerPostOffset = 10f;
+	protected float cornerPostOffset = 0;//10f;
+	protected int smoothingIterations = 0;
 
 	protected float targetPointShift = 80;
 
@@ -159,7 +160,7 @@ public class MyCarMain extends AI {
 
 
 			// modify the graph to have many points and smooth it out
-			list = smoothNodes(list, 8);
+			list = smoothNodes(list, smoothingIterations);
 
 			currentPath = list.toArray(path);
 		}
@@ -303,6 +304,7 @@ public class MyCarMain extends AI {
 		Vector2f p = null; //info.getCurrentCheckpoint();
 
 		Vector2f pPoint = new Vector2f(x, y);
+		/* old code: scale towards velocity first */
 		// Vector2f offset = new Vector2f(info.getVelocity());
 		// if(offset.length() < 0.01f) {
 		// 	return info.getCurrentCheckpoint(); // TODO elegant solution
@@ -315,48 +317,23 @@ public class MyCarMain extends AI {
 		// Vector2f.add(pPoint, offset, pPoint);
 
 		if(currentPath != null) {
-			int minNodeIndex = 0;
+			Vector2f minPoint = currentPath[0];
 			float minDist = Float.MAX_VALUE;
+			int lineIndex = 0;
 
-			for(int i = 0; i < currentPath.length; i++) {
-				Node n = currentPath[i];
+			for (int i = 0; i < currentPath.length-1; i++) {
+				Vector2f point = GeometryUtils.closestPointOnLineSegment(currentPath[i], currentPath[i+1], pPoint);
 
-				float dist = GeometryUtils.distanceBetweenPoints(n, pPoint);
+				float dist = GeometryUtils.distanceBetweenPoints(point, pPoint);
 
 				if(dist < minDist) {
+					minPoint = point;
 					minDist = dist;
-					minNodeIndex = i;
+					lineIndex = i;
 				}
 			}
 
-			Vector2f target;
-			int beforeIndex;
-
-			if(minNodeIndex == 0) {
-				target = GeometryUtils.projectPointOnLine(currentPath[0], currentPath[1], pPoint);
-				beforeIndex = 0;
-			} else if(minNodeIndex == currentPath.length - 1) {
-				target = GeometryUtils.projectPointOnLine(
-					currentPath[minNodeIndex-1], currentPath[minNodeIndex], pPoint);
-					beforeIndex = minNodeIndex-1;
-			} else {
-				Vector2f target1 = GeometryUtils.projectPointOnLine(
-					currentPath[minNodeIndex-1], currentPath[minNodeIndex], pPoint);
-				Vector2f target2 = GeometryUtils.projectPointOnLine(
-					currentPath[minNodeIndex], currentPath[minNodeIndex+1], pPoint);
-				
-				if(GeometryUtils.distanceBetweenPoints(target1, pPoint) < GeometryUtils.distanceBetweenPoints(target2, pPoint)) {
-					target = target1;
-					beforeIndex = minNodeIndex-1;
-				} else {
-					target = target2;
-					beforeIndex = minNodeIndex;
-				}
-			}
-
-			target = shiftPointAlongPath(currentPath, target, beforeIndex, targetPointShift);
-
-			return target;
+			return shiftPointAlongPath(currentPath, minPoint, lineIndex, targetPointShift);
 		}
 
 		return p;
@@ -414,54 +391,54 @@ public class MyCarMain extends AI {
 			GL11.glEnd();
 		
 			// misc debug points
-		GL11.glColor3f(1.0f, 0.2f, 0.0f);
-		GL11.glPointSize(16f);
-		GL11.glBegin(GL11.GL_POINTS);
-		
-		GL11.glVertex2d(getCurrentTargetPoint().x, getCurrentTargetPoint().y);
-		GL11.glEnd();
-		GL11.glPointSize(8f);
-		
-		if(debugPoints != null) {
-			GL11.glColor3f(1f, 1f, 1f);
+			GL11.glColor3f(1.0f, 0.2f, 0.0f);
+			GL11.glPointSize(16f);
 			GL11.glBegin(GL11.GL_POINTS);
-			for (Vector2f p : debugPoints) {
-				GL11.glVertex2d(p.x, p.y);
-			}
-			GL11.glVertex2d(0, 1000);
-			GL11.glVertex2d(1000, 1000);
-			GL11.glVertex2d(1000, 0);
-			GL11.glVertex2d(0, 0);
-			GL11.glEnd();
-		}
-		
-		if (debugLines != null) {
-			GL11.glColor3f(0f, 0f, 0f);
-			GL11.glBegin(GL11.GL_LINES);
-			for (Vector4f p : debugLines) {
-				GL11.glVertex2d(p.x, p.y);
-				GL11.glVertex2d(p.z, p.w);
-			}
-			GL11.glEnd();
-		}
-		
-		if (currentPath != null) {
-			GL11.glColor3f(0f, 0f, 1f);
-			GL11.glBegin(GL11.GL_LINE_STRIP);
-			for (Vector2f p : currentPath) {
-				GL11.glVertex2d(p.x, p.y);
-			}
-			GL11.glEnd();
 			
-			GL11.glColor3f(.5f, .5f, 1f);
-			GL11.glBegin(GL11.GL_POINTS);
-			for (Vector2f p : currentPath) {
-				GL11.glVertex2d(p.x, p.y);
-			}
+			GL11.glVertex2d(getCurrentTargetPoint().x, getCurrentTargetPoint().y);
 			GL11.glEnd();
+			GL11.glPointSize(8f);
+			
+			if(debugPoints != null) {
+				GL11.glColor3f(1f, 1f, 1f);
+				GL11.glBegin(GL11.GL_POINTS);
+				for (Vector2f p : debugPoints) {
+					GL11.glVertex2d(p.x, p.y);
+				}
+				GL11.glVertex2d(0, 1000);
+				GL11.glVertex2d(1000, 1000);
+				GL11.glVertex2d(1000, 0);
+				GL11.glVertex2d(0, 0);
+				GL11.glEnd();
+			}
+			
+			if (debugLines != null) {
+				GL11.glColor3f(0f, 0f, 0f);
+				GL11.glBegin(GL11.GL_LINES);
+				for (Vector4f p : debugLines) {
+					GL11.glVertex2d(p.x, p.y);
+					GL11.glVertex2d(p.z, p.w);
+				}
+				GL11.glEnd();
+			}
+			
+			if (currentPath != null) {
+				GL11.glColor3f(0f, 0f, 1f);
+				GL11.glBegin(GL11.GL_LINE_STRIP);
+				for (Vector2f p : currentPath) {
+					GL11.glVertex2d(p.x, p.y);
+				}
+				GL11.glEnd();
+				
+				GL11.glColor3f(.5f, .5f, 1f);
+				GL11.glBegin(GL11.GL_POINTS);
+				for (Vector2f p : currentPath) {
+					GL11.glVertex2d(p.x, p.y);
+				}
+				GL11.glEnd();
+			}
 		}
 	}
-}
 	
 
 	@Override

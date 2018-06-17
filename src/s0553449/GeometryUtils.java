@@ -48,11 +48,22 @@ public class GeometryUtils {
         return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
     }
 
+    public static Vector2f closestPointOnLineSegment(Vector2f l1, Vector2f l2, Vector2f p) {
+        Vector2f projP = projectPointOnLine(l1, l2, p);
+        clampPointInRectangle(l1, l2, projP);
+        
+        return projP;
+    }
+
     public static Vector2f projectPointOnLine(Vector2f l1, Vector2f l2, Vector2f p) {
         // return l2;
 
         Vector2f n = new Vector2f();
         Vector2f.sub(l2, l1, n);
+        if(n.length() == 0) {
+            Vector2f.add(n, l1, n);
+            return n;
+        }
         n.normalise();
         Vector2f p3 = new Vector2f(p);
         Vector2f.sub(p3, l1, p3);
@@ -65,5 +76,14 @@ public class GeometryUtils {
 
     public static float distanceBetweenPoints(Vector2f p1, Vector2f p2) {
         return (float) Math.sqrt((p2.x - p1.x)*(p2.x - p1.x) + (p2.y - p1.y)*(p2.y-p1.y));
+    }
+
+    public static void clampPointInRectangle(Vector2f r1, Vector2f r2, Vector2f p) {
+        float maxX = Math.max(r1.x, r2.x);
+        float minX = Math.min(r1.x, r2.x);
+        float maxY = Math.max(r1.y, r2.y);
+        float minY = Math.min(r1.y, r2.y);
+        p.setX(Math.min(Math.max(p.x, minX), maxX));
+        p.setY(Math.min(Math.max(p.y, minY), maxY));
     }
 }

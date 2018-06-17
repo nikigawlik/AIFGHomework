@@ -7,7 +7,7 @@ f_orig = open("TemplateCar.java", "r")
 text_orig = f_orig.read()
 f_orig.close()
 
-NUMBER_OF_CARS = 30
+NUMBER_OF_CARS = 20
 
 for i in range(1, NUMBER_OF_CARS):
     name = "testCar" + str(i)

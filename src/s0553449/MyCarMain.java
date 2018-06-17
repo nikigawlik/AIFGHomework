@@ -33,7 +33,7 @@ public class MyCarMain extends AI {
 	protected float cornerCalcMargin = 7f;
 	protected float cornerPostOffset = 10f;
 
-	protected float targetPointShift = 60f;
+	protected float targetPointShift = 80;
 
 	protected boolean doDebug = true;
 	
@@ -159,7 +159,7 @@ public class MyCarMain extends AI {
 
 
 			// modify the graph to have many points and smooth it out
-			list = smoothNodes(list, 4);
+			list = smoothNodes(list, 8);
 
 			currentPath = list.toArray(path);
 		}
@@ -268,9 +268,11 @@ public class MyCarMain extends AI {
 		float targetAngleV = (float) Math.pow(absDA/brakeAngle, approachPower) * maxAngleSpd;
 		targetAngleV *= Math.signum(deltaAngle);
 		// clamp
+		targetAngleV *= 13;
 		targetAngleV = Math.min(Math.max(targetAngleV, -maxAngleSpd), maxAngleSpd);
 		
 		steering = targetAngleV - info.getAngularVelocity();
+		steering *= 4f;
 		
 		if (Math.abs(deltaAngle) < 1.57) {
 			// We are on target (more or less)
@@ -282,6 +284,7 @@ public class MyCarMain extends AI {
 			float acc = Math.max(turnVelocity - info.getVelocity().length(), 0);
 			throttle = acc;
 		}
+
 
 		throttle *= throttlemod;
 

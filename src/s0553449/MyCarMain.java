@@ -34,6 +34,7 @@ public class MyCarMain extends AI {
 	protected float cornerPostOffset = 0;//10f;
 	protected int smoothingIterations = 0;
 
+	protected float maxDistanceFromPath = 40f;	
 	protected float targetPointShift = 80f;
 	protected float minTargetPointShift = 10f;
 	
@@ -333,7 +334,6 @@ public class MyCarMain extends AI {
 			}
 
 			float distanceToP = GeometryUtils.distanceBetweenPoints(minPoint, pPoint);
-			float maxDistanceFromPath = 40f;
 
 			float shift = minTargetPointShift + (targetPointShift - minTargetPointShift) 
 				* Math.max(0f, 1f - distanceToP/maxDistanceFromPath);

@@ -9,20 +9,21 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
         super(info);
         // approachPower = /*<f*/1.44f/*>*/;
         // turnVelocity = /*<f*/6.05f/*>*/;
-        targetWeight = /*<f*/0.98f/*>*/;
-        obstacleWeight = /*<f*/9.17f/*>*/;
-        feelerDistance = /*<f*/13.49f/*>*/;
-        feelerDistanceSides = /*<f*/10.49f/*>*/;
+        targetWeight = /*<f*/1f/*>*/;
+        obstacleWeight = /*<f*/10f/*>*/;
+        feelerDistance = /*<f*/20f/*>*/;
+        feelerDistanceSides = /*<f*/20f/*>*/;
         feelerAngle = /*<f*/0.75f/*>*/;
         
 	    cornerOffset = /*<f*/30/*>*/;
-	    cornerPostOffset = /*<f*/10f/*>*/;
-	    targetPointShift = /*<f*/60f/*>*/;
+	    // cornerPostOffset = /*<f*/10f/*>*/;
+        maxDistanceFromPath = /*<f*/40f/*>*/;
+        targetPointShift = /*<f*/80f/*>*/;
     }
 
     @Override
     protected void init() {
-        // enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
+        enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
 		calculateGraph();
     }
 

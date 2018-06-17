@@ -333,11 +333,25 @@ public class MyCarMain extends AI {
 
 			p = shiftPointAlongPath(currentPath, minPoint, lineIndex, targetPointShift);
 
-			// Removed: Causes lag and does not work reliably
-			// TODO: Find a way to implement this correctly
-			// if(levelGraph.testLineAgainstLevel(pPoint, p, false)) {
-			// 	currentPath = calculatePathTo(currentGoal);
-			// }
+			if(levelGraph.testLineAgainstLevel(pPoint, p, false)) {
+				// redo the search, but include collision checks
+				minPoint = currentPath[0];
+				minDist = Float.MAX_VALUE;
+				lineIndex = 0;
+				for (int i = 0; i < currentPath.length-1; i++) {
+					Vector2f point = GeometryUtils.closestPointOnLineSegment(currentPath[i], currentPath[i+1], pPoint);
+	
+					float dist = GeometryUtils.distanceBetweenPoints(point, pPoint);
+	
+					if(dist < minDist && !levelGraph.testLineAgainstLevel(pPoint, point, false)) {
+						minPoint = point;
+						minDist = dist;
+						lineIndex = i;
+					}
+				}
+
+				p = minPoint;
+			}
 		}
 
 		return p;

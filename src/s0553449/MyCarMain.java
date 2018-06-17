@@ -254,20 +254,22 @@ public class MyCarMain extends AI {
 			float invert = (float) Math.signum(i);
 
 			float fd = i == 0? feelerDistance : feelerDistanceSides;
-			
-			for(Polygon o : obstacles) {
-				if(o.contains(position.x + dX * fd, position.y + dY * fd) && !(i == 1 && firstCollided)) {
-					deltaX += invert * dY * obstacleWeight;
-					deltaY += -invert * dX * obstacleWeight;
 
-					throttlemod = i == 0? 0.1f : 0.4f;
-					if (i == -1) {
-						firstCollided = true;
-					}
+			Vector2f rayPoint = new Vector2f(position.x + dX * fd, position.y + dY * fd);
+			
+			boolean collision = levelGraph.testLineAgainstLevel(position, rayPoint, false);
+
+			if(collision && !(i == 1 && firstCollided)) {
+				deltaX += invert * dY * obstacleWeight;
+				deltaY += -invert * dX * obstacleWeight;
+
+				throttlemod = i == 0? 0.1f : 0.4f;
+				if (i == -1) {
+					firstCollided = true;
 				}
 			}
 			
-			debugFeelersList.add( new Vector2f(position.x + dX * fd, position.y + dY * fd));
+			debugFeelersList.add(rayPoint);
 		}
 
 		// debugStr += "post delta: " + deltaX + ", " + deltaY + "\n";

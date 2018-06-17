@@ -34,8 +34,9 @@ public class MyCarMain extends AI {
 	protected float cornerPostOffset = 0;//10f;
 	protected int smoothingIterations = 0;
 
-	protected float targetPointShift = 80;
-
+	protected float targetPointShift = 80f;
+	protected float targetPointShiftReduced = 10f;
+	
 	protected boolean doDebug = true;
 	
 	private String debugStr = "";
@@ -350,7 +351,7 @@ public class MyCarMain extends AI {
 					}
 				}
 
-				p = minPoint;
+				p = shiftPointAlongPath(currentPath, minPoint, lineIndex, targetPointShiftReduced);
 			}
 		}
 

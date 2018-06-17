@@ -35,7 +35,7 @@ public class MyCarMain extends AI {
 	protected int smoothingIterations = 0;
 
 	protected float targetPointShift = 80f;
-	protected float targetPointShiftReduced = 10f;
+	protected float minTargetPointShift = 10f;
 	
 	protected boolean doDebug = true;
 	
@@ -332,7 +332,13 @@ public class MyCarMain extends AI {
 				}
 			}
 
-			p = shiftPointAlongPath(currentPath, minPoint, lineIndex, targetPointShift);
+			float distanceToP = GeometryUtils.distanceBetweenPoints(minPoint, pPoint);
+			float maxDistanceFromPath = 40f;
+
+			float shift = minTargetPointShift + (targetPointShift - minTargetPointShift) 
+				* Math.max(0f, 1f - distanceToP/maxDistanceFromPath);
+
+			p = shiftPointAlongPath(currentPath, minPoint, lineIndex, shift);
 
 			if(levelGraph.testLineAgainstLevel(pPoint, p, false)) {
 				// redo the search, but include collision checks
@@ -351,7 +357,7 @@ public class MyCarMain extends AI {
 					}
 				}
 
-				p = shiftPointAlongPath(currentPath, minPoint, lineIndex, targetPointShiftReduced);
+				p = shiftPointAlongPath(currentPath, minPoint, lineIndex, minTargetPointShift);
 			}
 		}
 

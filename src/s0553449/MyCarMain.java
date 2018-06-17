@@ -3,6 +3,7 @@ package s0553449;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 
@@ -28,6 +29,11 @@ public class MyCarMain extends AI {
 	protected float feelerDistanceSides = 20f;
 	protected float feelerAngle = (float) Math.PI/4;
 
+	protected float stuckCheckFeelerDistance = 25f;
+
+	private Vector2f positionLastFrame;
+	private Vector2f position;
+
 	// pathfinding related
 	protected float cornerOffset = 30;
 	protected float cornerCalcMargin = 7f;
@@ -47,10 +53,7 @@ public class MyCarMain extends AI {
 	private Node currentGoal;
 
 	// display specific stuff
-	private float x;
-	private float y; 
-	private float[] debugXs;
-	private float[] debugYs;
+	private Vector2f[] debugFeelers;
 	private Vector2f[] debugPoints = new Vector2f[0]; // array of points to draw
 	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw
 
@@ -59,6 +62,7 @@ public class MyCarMain extends AI {
 	public MyCarMain(Info info) {
 		super(info);
 		init();
+		positionLastFrame = new Vector2f(info.getX(), info.getY());
 	}
 
 	protected void init() {
@@ -69,7 +73,6 @@ public class MyCarMain extends AI {
 	protected void calculateGraph() {
 		// calculate outer points
 		Node[] nodes = findNodes();
-		System.out.println("create level graph!");
 		levelGraph = new LevelGraph(nodes, info.getTrack().getObstacles(), cornerOffset - cornerCalcMargin);
 		// calculate edges
 		levelGraph.calculateVisibilityGraph();
@@ -120,6 +123,8 @@ public class MyCarMain extends AI {
 	public DriverAction update(boolean arg0) {
 		debugStr = "";
 
+		position = new Vector2f(info.getX(), info.getY());
+
 		Point checkpoint = info.getCurrentCheckpoint();
 		Node checkpointNode = new Node(checkpoint.x, checkpoint.y, 0, 0);
 
@@ -127,7 +132,11 @@ public class MyCarMain extends AI {
 			currentPath = calculatePathTo(checkpointNode);
 		}
 		
-		return doSteering();
+		DriverAction steering = doSteering();
+
+		positionLastFrame = new Vector2f(info.getX(), info.getY());
+
+		return steering;
 	}
 
 	private Node[] calculatePathTo(Node goal) {
@@ -215,13 +224,13 @@ public class MyCarMain extends AI {
 		float throttle = info.getMaxAcceleration();
 		float steering = 0f;
 		
-		x = info.getX();
-		y = info.getY();
+		position.x = info.getX();
+		position.y = info.getY();
 
 		Vector2f ncp = getCurrentTargetPoint();
 
-		float deltaX = ncp.x - x;
-		float deltaY = ncp.y - y;
+		float deltaX = ncp.x - position.x;
+		float deltaY = ncp.y - position.y;
 		float distanceToTarget = (float) Math.sqrt(deltaX*deltaX + deltaY*deltaY);
 		deltaX /= distanceToTarget;
 		deltaY /= distanceToTarget;
@@ -231,8 +240,7 @@ public class MyCarMain extends AI {
 		
 		Polygon[] obstacles = info.getTrack().getObstacles();
 		
-		debugXs = new float[3];
-		debugYs = new float[3];
+		ArrayList<Vector2f> debugFeelersList = new ArrayList<>();
 
 		float throttlemod = 1f;
 		// stupid hack
@@ -248,7 +256,7 @@ public class MyCarMain extends AI {
 			float fd = i == 0? feelerDistance : feelerDistanceSides;
 			
 			for(Polygon o : obstacles) {
-				if(o.contains(x + dX * fd, y + dY * fd) && !(i == 1 && firstCollided)) {
+				if(o.contains(position.x + dX * fd, position.y + dY * fd) && !(i == 1 && firstCollided)) {
 					deltaX += invert * dY * obstacleWeight;
 					deltaY += -invert * dX * obstacleWeight;
 
@@ -259,8 +267,7 @@ public class MyCarMain extends AI {
 				}
 			}
 			
-			debugXs[i+1] = x + dX * fd;
-			debugYs[i+1] = y + dY * fd;
+			debugFeelersList.add( new Vector2f(position.x + dX * fd, position.y + dY * fd));
 		}
 
 		// debugStr += "post delta: " + deltaX + ", " + deltaY + "\n";
@@ -307,6 +314,47 @@ public class MyCarMain extends AI {
 
 		// debugStr += "steering chk: " + debugFormat.format(steering/info.getMaxAngularAcceleration()) + "\n";
 		// debugStr += "throttle chk: " + debugFormat.format(throttle/info.getMaxAcceleration()) + "\n";
+
+		// test if we are stuck
+		float delta = GeometryUtils.distanceBetweenPoints(positionLastFrame, position);
+		if(delta < 0.00001) {
+			// get unstuck
+
+			// test forwards and backwards for walls
+			float angle = info.getOrientation();
+			Vector2f forward = new Vector2f((float) Math.cos(angle), (float) Math.sin(angle));
+
+			Vector2f p1 = new Vector2f(forward);
+			p1.scale(stuckCheckFeelerDistance);
+			Vector2f.add(p1, position, p1);
+
+			Vector2f p2 = new Vector2f(forward);
+			p2.scale(-stuckCheckFeelerDistance);
+			Vector2f.add(p2, position, p2);
+
+			boolean colFront = levelGraph.testLineAgainstLevel(position, p1, false);
+			boolean colBack = levelGraph.testLineAgainstLevel(position, p2, false);
+
+			debugFeelersList.add(p1);
+			debugFeelersList.add(p2);
+
+			if(colFront && colBack) {
+				// We are stuck AS FUCK
+				// do nothing D:
+				// hopefully get reset and stuff will work
+				throttle = 0;
+			} else if(colBack) {
+				throttle = info.getMaxAcceleration();
+			} else {
+				// when no collision or back front collision
+				throttle = -info.getMaxAcceleration();
+			}
+
+			steering = (float) Math.random() * 2f - 1f;
+		}
+
+		debugFeelers = new Vector2f[debugFeelersList.size()];
+		debugFeelers = debugFeelersList.toArray(debugFeelers);
 		
 		return new DriverAction(throttle, steering);
 	}
@@ -314,7 +362,7 @@ public class MyCarMain extends AI {
 	protected Vector2f getCurrentTargetPoint() {
 		Vector2f p = null; //info.getCurrentCheckpoint();
 
-		Vector2f pPoint = new Vector2f(x, y);
+		Vector2f pPoint = new Vector2f(position);
 
 		if(currentPath != null) {
 			Vector2f minPoint = currentPath[0];
@@ -396,13 +444,13 @@ public class MyCarMain extends AI {
 				System.out.println(debugStr);
 			}
 			
-			if (debugXs != null && debugXs.length != 0) {
-				for (int i = 0; i < debugXs.length; i++) {
+			if (debugFeelers != null && debugFeelers.length != 0) {
+				for (int i = 0; i < debugFeelers.length; i++) {
 					GL11.glColor3f(0.0f, 1.0f, 0.2f);
 					GL11.glBegin(GL11.GL_LINE_STRIP);
 					
-					GL11.glVertex2d(x, y);
-					GL11.glVertex2d(debugXs[i], debugYs[i]);
+					GL11.glVertex2d(position.x, position.y);
+					GL11.glVertex2d(debugFeelers[i].x, debugFeelers[i].y);
 					GL11.glEnd();
 				}
 			}
@@ -411,8 +459,8 @@ public class MyCarMain extends AI {
 			GL11.glColor3f(1.0f, 0.2f, 0.0f);
 			GL11.glBegin(GL11.GL_LINES);
 			
-			GL11.glVertex2d(x, y);
-			GL11.glVertex2d(x + info.getVelocity().x, y + info.getVelocity().y);
+			GL11.glVertex2d(position.x, position.y);
+			GL11.glVertex2d(position.x + info.getVelocity().x, position.y + info.getVelocity().y);
 			GL11.glEnd();
 		
 			// misc debug points

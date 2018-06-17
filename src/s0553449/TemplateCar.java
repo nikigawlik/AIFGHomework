@@ -12,9 +12,9 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
 	    // cornerPostOffset = /*<f*/10.933880000000002f/*>*/;
         targetWeight = /*<f*/1.049188f/*>*/;
         obstacleWeight = /*<f*/9.459520000000001f/*>*/;
-        feelerDistance = /*<f*/25.516320000000004f/*>*/;
-        feelerDistanceSides = /*<f*/16.64272f/*>*/;
-        feelerAngle = /*<f*/0.6224399999999999f/*>*/;
+        feelerDistance = /*<f*/20.516320000000004f/*>*/;
+        feelerDistanceSides = /*<f*/20.64272f/*>*/;
+        feelerAngle = /*<f*/0.7524399999999999f/*>*/;
         
 	    cornerOffset = /*<f*/30.6f/*>*/;
         maxDistanceFromPath = /*<f*/33.704640000000005f/*>*/;
@@ -23,7 +23,7 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
 
     @Override
     protected void init() {
-        // enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
+        enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
 		calculateGraph();
     }
 

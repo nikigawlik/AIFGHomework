@@ -7,23 +7,23 @@ public class /*<n*/TemplateCar/*>*/ extends MyCarMain{
     
     public /*<n*/TemplateCar/*>*/(Info info) {
         super(info);
-        // approachPower = /*<f*/1.44f/*>*/;
-        // turnVelocity = /*<f*/6.05f/*>*/;
-        targetWeight = /*<f*/1f/*>*/;
-        obstacleWeight = /*<f*/10f/*>*/;
-        feelerDistance = /*<f*/20f/*>*/;
-        feelerDistanceSides = /*<f*/20f/*>*/;
-        feelerAngle = /*<f*/0.75f/*>*/;
+        // approachPower = /*<f*/1.4607647999999998f/*>*/;
+        // turnVelocity = /*<f*/5.558256f/*>*/;
+	    // cornerPostOffset = /*<f*/10.933880000000002f/*>*/;
+        targetWeight = /*<f*/1.049188f/*>*/;
+        obstacleWeight = /*<f*/9.459520000000001f/*>*/;
+        feelerDistance = /*<f*/25.516320000000004f/*>*/;
+        feelerDistanceSides = /*<f*/16.64272f/*>*/;
+        feelerAngle = /*<f*/0.6224399999999999f/*>*/;
         
-	    cornerOffset = /*<f*/30/*>*/;
-	    // cornerPostOffset = /*<f*/10f/*>*/;
-        maxDistanceFromPath = /*<f*/40f/*>*/;
-        targetPointShift = /*<f*/80f/*>*/;
+	    cornerOffset = /*<f*/30.6f/*>*/;
+        maxDistanceFromPath = /*<f*/33.704640000000005f/*>*/;
+        targetPointShift = /*<f*/97.8576f/*>*/;
     }
 
     @Override
     protected void init() {
-        enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
+        // enlistForInternalDevelopmentPurposesOnlyAndDoNOTConsiderThisAsPartOfTheHandedInSolution();
 		calculateGraph();
     }
 

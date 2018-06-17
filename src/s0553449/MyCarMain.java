@@ -25,7 +25,7 @@ public class MyCarMain extends AI {
 	protected float obstacleWeight = 10f;
 	
 	protected float feelerDistance = 20f;
-	protected float feelerDistanceSides = 10f;
+	protected float feelerDistanceSides = 20f;
 	protected float feelerAngle = (float) Math.PI/4;
 
 	// pathfinding related

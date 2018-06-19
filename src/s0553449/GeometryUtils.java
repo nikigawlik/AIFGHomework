@@ -10,20 +10,20 @@ public class GeometryUtils {
     }
 
     public static Vector2f intersectLines(Vector2f rootA, Vector2f dirA, Vector2f rootB, Vector2f dirB) {
-        float a1 = dirA.y;
-        float b1 = -dirA.x;
-        float c1 = a1*rootA.x + b1*rootA.y;
-        float a2 = dirB.y;
-        float b2 = -dirB.x;
-        float c2 = a2*rootB.x + b2*rootB.y;
+        double a1 = dirA.y;
+        double b1 = -dirA.x;
+        double c1 = a1*rootA.x + b1*rootA.y;
+        double a2 = dirB.y;
+        double b2 = -dirB.x;
+        double c2 = a2*rootB.x + b2*rootB.y;
         
-        float det = a1*b2 - a2*b1;
+        double det = a1*b2 - a2*b1;
         if(det == 0) {
             return null;
         }
         return new Vector2f(
-            (b2*c1 - b1*c2)/det, 
-            (a1*c2 - a2*c1)/det
+            (float)((b2*c1 - b1*c2)/det), 
+            (float)((a1*c2 - a2*c1)/det)
         );
     }
 

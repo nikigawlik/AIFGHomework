@@ -238,8 +238,6 @@ public class MyCarMain extends AI {
 		deltaX *= targetWeight;
 		deltaY *= targetWeight;
 		
-		Polygon[] obstacles = info.getTrack().getObstacles();
-		
 		ArrayList<Vector2f> debugFeelersList = new ArrayList<>();
 
 		float throttlemod = 1f;
@@ -352,7 +350,9 @@ public class MyCarMain extends AI {
 				throttle = -info.getMaxAcceleration();
 			}
 
-			steering = (float) Math.random() * 2f - 1f;
+			steering = - info.getAngularVelocity();
+
+			// steering = (float) Math.random() * 2f - 1f;
 		}
 
 		debugFeelers = new Vector2f[debugFeelersList.size()];

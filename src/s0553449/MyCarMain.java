@@ -43,7 +43,7 @@ public class MyCarMain extends AI {
 	protected int smoothingIterations = 0;
 
 	protected float maxDistanceFromPath = 40f;	
-	protected float targetPointShift = 80f;
+	protected float targetPointShift = 60f;
 	protected float minTargetPointShift = 10f;
 	
 	protected boolean doDebug = true;
@@ -261,11 +261,11 @@ public class MyCarMain extends AI {
 		float spinningRight = fuzzLinear(info.getAngularVelocity(), 0, -info.getMaxAngularVelocity());
 		float spinning = or(spinningLeft, spinningRight);
 
-		float whatIsClose = 1f; // angle counts as "close" 
+		float whatIsClose = 1.9f; // angle counts as "close" 
 
 		float movingLeftOfTarget = fuzzLinear(velToTargetAngle, 0, -whatIsClose);
 		float movingRightOfTarget = fuzzLinear(velToTargetAngle, 0, whatIsClose);
-		float onTarget = and(not(movingLeftOfTarget), not(movingRightOfTarget));
+		float movingToTarget = and(not(movingLeftOfTarget), not(movingRightOfTarget));
 
 		float arriveDeltaAngle = 0.4f ;//+ 0.5f * (info.getVelocity().length() / info.getMaxVelocity());
 		float arriveDeltaLow = arriveDeltaAngle * 0.98f;
@@ -280,25 +280,22 @@ public class MyCarMain extends AI {
 		float arrivingRight = and(fuzzLinear(lookToTargetAngle, 0, arriveDeltaLow), not(seekingRight));
 		float arriving = or(arrivingLeft, arrivingRight);
 
-		debugFloat(lookToTargetAngle);
-
-		float thres = 0.95f;
-		float amFast = fuzzLinear(vel.length(), info.getMaxVelocity() * thres, info.getMaxVelocity());
-		float amMoving = fuzzLinear(vel.length(), 0, info.getMaxVelocity() * thres);
+		float targetSpeed = 0.5f;
+		float amFast = fuzzLinear(vel.length(), info.getMaxVelocity() * targetSpeed, info.getMaxVelocity());
+		float amMoving = fuzzLinear(vel.length(), 0, info.getMaxVelocity() * targetSpeed);
 
 		float velLeft = or(arrivingRight, seekingRight);
 		float velRight = or(arrivingLeft, seekingLeft);
-
-		debugFloat(velLeft);
-		debugFloat(velRight);
 
 		// float steerLeft = 0;//and(movingRightOfTarget, not(spinningLeft));
 		// float steerRight = 0;//and(movingLeftOfTarget, not(spinningRight));
 
 		float canStop = not(spinning);
 
-		float accelerate = not(amMoving);
-		float decelerate = amFast;
+		float onTarget = and(amMoving, movingToTarget); // TODO moving only forwards
+
+		float accelerate = or(not(amMoving), movingToTarget);
+		float decelerate = or(amFast, and(amFast, not(onTarget)));
 
 		throttle = defuzzLinear(accelerate, 0f, info.getMaxAcceleration()) 
 			+ defuzzLinear(decelerate, 0f, -info.getMaxAcceleration());
@@ -306,9 +303,10 @@ public class MyCarMain extends AI {
 		float targetAngularVelocity = defuzzLinear(velRight, 0, -info.getMaxAngularVelocity())
 			+ defuzzLinear(velLeft, 0, info.getMaxAngularVelocity());
 
-		debugFloat(targetAngularVelocity);
-
 		steering = targetAngularVelocity - info.getAngularVelocity();
+
+		debugFloat(amFast);
+		debugFloat(steering);
 
 		
 		// debugFloat(throttle);

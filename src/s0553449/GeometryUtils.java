@@ -3,6 +3,9 @@ package s0553449;
 import org.lwjgl.util.vector.Vector2f;
 
 public class GeometryUtils {
+    static final float PI = (float) Math.PI;
+    static final float TAU = (float) (2 * Math.PI);
+
     public static Vector2f intersectLineSegments(Vector2f rootA, Vector2f dirA, Vector2f rootB, Vector2f dirB) {
         Vector2f intersection = intersectLines(rootA, dirA, rootB, dirB);
         if(intersection == null) return null;
@@ -85,5 +88,13 @@ public class GeometryUtils {
         float minY = Math.min(r1.y, r2.y);
         p.setX(Math.min(Math.max(p.x, minX), maxX));
         p.setY(Math.min(Math.max(p.y, minY), maxY));
+    }
+
+    public static float deltaAngle(float from, float to) {
+        float angle = to - from;
+        angle = (angle % TAU + TAU) % TAU;
+        if(angle > PI)
+            angle -= TAU;
+        return angle;
     }
 }

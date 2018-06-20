@@ -15,6 +15,8 @@ import lenz.htw.ai4g.ai.AI;
 import lenz.htw.ai4g.ai.DriverAction;
 import lenz.htw.ai4g.ai.Info;
 
+import static s0553449.FuzzyLogic.*;
+
 public class MyCarMain extends AI {
 
 	protected float brakeAngle = 6.14f;
@@ -56,6 +58,8 @@ public class MyCarMain extends AI {
 	private Vector2f[] debugFeelers;
 	private Vector2f[] debugPoints = new Vector2f[0]; // array of points to draw
 	private Vector4f[] debugLines = new Vector4f[0]; // array of lines to draw
+
+	private ArrayList<Float> debugFloats;
 
 	private Node[] currentPath;
 
@@ -221,139 +225,106 @@ public class MyCarMain extends AI {
 	}
 
 	private DriverAction doSteering() {
+		ArrayList<Vector2f> debugFeelersList = new ArrayList<>();
+		debugFloats = new ArrayList<>();
+
 		float throttle = info.getMaxAcceleration();
 		float steering = 0f;
 		
 		position.x = info.getX();
 		position.y = info.getY();
 
-		Vector2f ncp = getCurrentTargetPoint();
+		Vector2f target = getCurrentTargetPoint();
+		Vector2f toTarget = new Vector2f(target);
+		Vector2f.sub(toTarget, position, toTarget);
+		float targetAngle = (float)Math.atan2(toTarget.y, toTarget.x);
 
-		float deltaX = ncp.x - position.x;
-		float deltaY = ncp.y - position.y;
-		float distanceToTarget = (float) Math.sqrt(deltaX*deltaX + deltaY*deltaY);
-		deltaX /= distanceToTarget;
-		deltaY /= distanceToTarget;
-		
-		deltaX *= targetWeight;
-		deltaY *= targetWeight;
-		
-		ArrayList<Vector2f> debugFeelersList = new ArrayList<>();
+		float distanceToTarget = GeometryUtils.distanceBetweenPoints(position, target);
 
-		float throttlemod = 1f;
-		// stupid hack
-		boolean firstCollided = false;
-		
-		for(int i = -1; i <= 1; i++) {
-			float angle = i * feelerAngle;
-			float absAngle = info.getOrientation() + angle;
-			float dX = (float) Math.cos(absAngle);
-			float dY = (float) Math.sin(absAngle);
-			float invert = (float) Math.signum(i);
+		float lookAngle = info.getOrientation();
+		Vector2f look = new Vector2f((float) Math.cos(lookAngle), (float) Math.sin(lookAngle));
 
-			float fd = i == 0? feelerDistance : feelerDistanceSides;
-
-			Vector2f rayPoint = new Vector2f(position.x + dX * fd, position.y + dY * fd);
-			
-			boolean collision = levelGraph.testLineAgainstLevel(position, rayPoint, false);
-
-			if(collision && !(i == 1 && firstCollided)) {
-				deltaX += invert * dY * obstacleWeight;
-				deltaY += -invert * dX * obstacleWeight;
-
-				throttlemod = i == 0? 0.1f : 0.4f;
-				if (i == -1) {
-					firstCollided = true;
-				}
-			}
-			
-			debugFeelersList.add(rayPoint);
+		Vector2f vel = info.getVelocity();
+		if (vel.length() == 0) {
+			vel = new Vector2f(look);
 		}
-
-		// debugStr += "post delta: " + deltaX + ", " + deltaY + "\n";
+		float velAngle = (float)Math.atan2(vel.y, vel.x);
 		
-		float reverse = 1;
+		// float lookToTargetAngle = Vector2f.angle(look, target);
+		// float velToTargetAngle = Vector2f.angle(vel, target);
+ 		float lookToTargetAngle = GeometryUtils.deltaAngle(lookAngle, targetAngle);
+		float velToTargetAngle = GeometryUtils.deltaAngle(velAngle, targetAngle);
+
+		// fuzzy logic
+
+		float spinningLeft = fuzzLinear(info.getAngularVelocity(), 0, info.getMaxAngularVelocity());
+		float spinningRight = fuzzLinear(info.getAngularVelocity(), 0, -info.getMaxAngularVelocity());
+		float spinning = or(spinningLeft, spinningRight);
+
+		float whatIsClose = 1f; // angle counts as "close" 
+
+		float movingLeftOfTarget = fuzzLinear(velToTargetAngle, 0, -whatIsClose);
+		float movingRightOfTarget = fuzzLinear(velToTargetAngle, 0, whatIsClose);
+		float onTarget = and(not(movingLeftOfTarget), not(movingRightOfTarget));
+
+		float arriveDeltaAngle = 0.4f ;//+ 0.5f * (info.getVelocity().length() / info.getMaxVelocity());
+		float arriveDeltaLow = arriveDeltaAngle * 0.98f;
+
+		// float seekingLeft = fuzzLinear(lookToTargetAngle, -arriveDeltaAngle, -GeometryUtils.PI);
+		// float seekingRight = fuzzLinear(lookToTargetAngle, arriveDeltaAngle, GeometryUtils.PI);
+		float seekingLeft = fuzzLinear(lookToTargetAngle, -arriveDeltaLow, -arriveDeltaAngle);
+		float seekingRight = fuzzLinear(lookToTargetAngle, arriveDeltaLow, arriveDeltaAngle);
+		float seeking = or(seekingLeft, seekingRight);
+
+		float arrivingLeft = and(fuzzLinear(lookToTargetAngle, 0, -arriveDeltaLow), not(seekingLeft));
+		float arrivingRight = and(fuzzLinear(lookToTargetAngle, 0, arriveDeltaLow), not(seekingRight));
+		float arriving = or(arrivingLeft, arrivingRight);
+
+		debugFloat(lookToTargetAngle);
+
+		float thres = 0.95f;
+		float amFast = fuzzLinear(vel.length(), info.getMaxVelocity() * thres, info.getMaxVelocity());
+		float amMoving = fuzzLinear(vel.length(), 0, info.getMaxVelocity() * thres);
+
+		float velLeft = or(arrivingRight, seekingRight);
+		float velRight = or(arrivingLeft, seekingLeft);
+
+		debugFloat(velLeft);
+		debugFloat(velRight);
+
+		// float steerLeft = 0;//and(movingRightOfTarget, not(spinningLeft));
+		// float steerRight = 0;//and(movingLeftOfTarget, not(spinningRight));
+
+		float canStop = not(spinning);
+
+		float accelerate = not(amMoving);
+		float decelerate = amFast;
+
+		throttle = defuzzLinear(accelerate, 0f, info.getMaxAcceleration()) 
+			+ defuzzLinear(decelerate, 0f, -info.getMaxAcceleration());
+
+		float targetAngularVelocity = defuzzLinear(velRight, 0, -info.getMaxAngularVelocity())
+			+ defuzzLinear(velLeft, 0, info.getMaxAngularVelocity());
+
+		debugFloat(targetAngularVelocity);
+
+		steering = targetAngularVelocity - info.getAngularVelocity();
+
 		
-		float toAngle = (float) Math.atan2(reverse * deltaY, reverse * deltaX);
-		float fromAngle = info.getOrientation();
+		// debugFloat(throttle);
+		// debugFloat(steering);
 		
-		float deltaAngle = (toAngle - fromAngle);
-		deltaAngle = (deltaAngle % 6.283f + 6.283f) % 6.283f;
-		if (Math.abs(deltaAngle) > 3.1415f)
-			deltaAngle -= 6.283f;
-		
-		// the angular velocity we want to have (linear function)
-		float absDA = Math.abs(deltaAngle);
-		float targetAngleV = (float) Math.pow(absDA/brakeAngle, approachPower) * maxAngleSpd;
-		targetAngleV *= Math.signum(deltaAngle);
-		// clamp
-		targetAngleV *= 13;
-		targetAngleV = Math.min(Math.max(targetAngleV, -maxAngleSpd), maxAngleSpd);
-		
-		steering = targetAngleV - info.getAngularVelocity();
-		steering *= 4f;
-		
-		if (Math.abs(deltaAngle) < 1.57) {
-			// We are on target (more or less)
-			float velocity = turnVelocity + (1f-deltaAngle/1.57f) * turnVelocity*3f;
-			float acc = Math.max(velocity - info.getVelocity().length(), 0);
-			throttle = acc;		
-		} else {
-			// We are turning, so we drive slower
-			float acc = Math.max(turnVelocity - info.getVelocity().length(), 0);
-			throttle = acc;
-		}
+		// debug section
 
+		debugStr += "lookToTargetAngle: " + debugFormat.format(lookToTargetAngle) + "\n";
+		debugStr += "velToTargetAngle: " + debugFormat.format(velToTargetAngle) + "\n";
+		debugStr += "current angleV: " + debugFormat.format(info.getAngularVelocity()) + "\n";
+		debugStr += "current vel: " + debugFormat.format(info.getVelocity().length()) + "\n";
 
-		throttle *= throttlemod;
+		debugStr += "steering chk: " + debugFormat.format(steering/info.getMaxAngularAcceleration()) + "\n";
+		debugStr += "throttle chk: " + debugFormat.format(throttle/info.getMaxAcceleration()) + "\n";
 
-		// debugStr += "deltaAngle: " + debugFormat.format(deltaAngle) + "\n";
-		// debugStr += "targetAngleV: " + debugFormat.format(targetAngleV) + "\n";
-		// debugStr += "current angleV: " + debugFormat.format(info.getAngularVelocity()) + "\n";
-		// debugStr += "current vel: " + debugFormat.format(info.getVelocity().length()) + "\n";
-
-		// debugStr += "steering chk: " + debugFormat.format(steering/info.getMaxAngularAcceleration()) + "\n";
-		// debugStr += "throttle chk: " + debugFormat.format(throttle/info.getMaxAcceleration()) + "\n";
-
-		// test if we are stuck
-		float delta = GeometryUtils.distanceBetweenPoints(positionLastFrame, position);
-		if(delta < 0.00001) {
-			// get unstuck
-
-			// test forwards and backwards for walls
-			float angle = info.getOrientation();
-			Vector2f forward = new Vector2f((float) Math.cos(angle), (float) Math.sin(angle));
-
-			Vector2f p1 = new Vector2f(forward);
-			p1.scale(stuckCheckFeelerDistance);
-			Vector2f.add(p1, position, p1);
-
-			Vector2f p2 = new Vector2f(forward);
-			p2.scale(-stuckCheckFeelerDistance);
-			Vector2f.add(p2, position, p2);
-
-			boolean colFront = levelGraph.testLineAgainstLevel(position, p1, false);
-			boolean colBack = levelGraph.testLineAgainstLevel(position, p2, false);
-
-			debugFeelersList.add(p1);
-			debugFeelersList.add(p2);
-
-			if(colFront && colBack) {
-				// We are stuck AS FUCK
-				// do nothing D:
-				// hopefully get reset and stuff will work
-				throttle = 0;
-			} else if(colBack) {
-				throttle = info.getMaxAcceleration();
-			} else {
-				// when no collision or back front collision
-				throttle = -info.getMaxAcceleration();
-			}
-
-			steering = - info.getAngularVelocity();
-
-			// steering = (float) Math.random() * 2f - 1f;
-		}
+		debugFeelersList.add(target);
 
 		debugFeelers = new Vector2f[debugFeelersList.size()];
 		debugFeelers = debugFeelersList.toArray(debugFeelers);
@@ -512,7 +483,19 @@ public class MyCarMain extends AI {
 				}
 				GL11.glEnd();
 			}
+
+			// FLOATS!
+			if(debugFloats != null) {
+				GL11.glColor3f(0, 0, 0);
+				for(int i = 0; i < debugFloats.size(); i++) {
+					NumberDisplay.drawFloat(debugFloats.get(i), position.x + 20, position.y - 1.5f * i);
+				}
+			}
 		}
+	}
+
+	private void debugFloat(float f) {
+		debugFloats.add(f);
 	}
 	
 

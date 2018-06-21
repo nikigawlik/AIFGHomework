@@ -33,7 +33,7 @@ public class MyCarMain extends AI {
 
 	protected float stuckCheckFeelerDistance = 25f;
 
-	private Vector2f positionLastFrame;
+	// private Vector2f positionLastFrame;
 	private Vector2f position;
 
 	// pathfinding related
@@ -68,7 +68,7 @@ public class MyCarMain extends AI {
 	public MyCarMain(Info info) {
 		super(info);
 		init();
-		positionLastFrame = new Vector2f(info.getX(), info.getY());
+		// positionLastFrame = new Vector2f(info.getX(), info.getY());
 	}
 
 	protected void init() {
@@ -140,7 +140,7 @@ public class MyCarMain extends AI {
 		
 		DriverAction steering = doSteering();
 
-		positionLastFrame = new Vector2f(info.getX(), info.getY());
+		// positionLastFrame = new Vector2f(info.getX(), info.getY());
 
 		return steering;
 	}
@@ -246,7 +246,7 @@ public class MyCarMain extends AI {
 		Vector2f.sub(toTarget, position, toTarget);
 		float targetAngle = (float)Math.atan2(toTarget.y, toTarget.x);
 
-		float distanceToTarget = GeometryUtils.distanceBetweenPoints(position, target);
+		// float distanceToTarget = GeometryUtils.distanceBetweenPoints(position, target);
 
 		float lookAngle = info.getOrientation();
 		Vector2f look = new Vector2f((float) Math.cos(lookAngle), (float) Math.sin(lookAngle));
@@ -267,9 +267,9 @@ public class MyCarMain extends AI {
 
 		// fuzzy logic
 
-		float spinningLeft = fuzzLinear(info.getAngularVelocity(), 0, info.getMaxAngularVelocity());
-		float spinningRight = fuzzLinear(info.getAngularVelocity(), 0, -info.getMaxAngularVelocity());
-		float spinning = or(spinningLeft, spinningRight);
+		// float spinningLeft = fuzzLinear(info.getAngularVelocity(), 0, info.getMaxAngularVelocity());
+		// float spinningRight = fuzzLinear(info.getAngularVelocity(), 0, -info.getMaxAngularVelocity());
+		// float spinning = or(spinningLeft, spinningRight);
 
 		float whatIsClose = 1.9f; // angle counts as "close" 
 		float whatIsCloseLower =0.1f; // angle counts as "close" 
@@ -282,7 +282,7 @@ public class MyCarMain extends AI {
 		float movingToTarget = and(not(movingLeftOfTarget), not(movingRightOfTarget));
 		
 		float usualSpeed = 0.5f;
-		float amFast = fuzzLinear(vel.length(), info.getMaxVelocity() * usualSpeed, info.getMaxVelocity());
+		// float amFast = fuzzLinear(vel.length(), info.getMaxVelocity() * usualSpeed, info.getMaxVelocity());
 		float amMoving = fuzzLinear(vel.length(), 0, info.getMaxVelocity() * usualSpeed);
 
 		float onTarget = and(amMoving, movingToTarget); 
@@ -300,11 +300,11 @@ public class MyCarMain extends AI {
 		// float seekingRight = fuzzLinear(lookToTargetAngle, arriveDeltaAngle, GeometryUtils.PI);
 		float seekingLeft = fuzzLinear(lookToTargetAngle, -arriveDeltaLow, -arriveDeltaAngle);
 		float seekingRight = fuzzLinear(lookToTargetAngle, arriveDeltaLow, arriveDeltaAngle);
-		float seeking = or(seekingLeft, seekingRight);
+		// float seeking = or(seekingLeft, seekingRight);
 
 		float arrivingLeft = and(fuzzLinear(lookToTargetAngle, 0, -arriveDeltaLow), not(seekingLeft));
 		float arrivingRight = and(fuzzLinear(lookToTargetAngle, 0, arriveDeltaLow), not(seekingRight));
-		float arriving = or(arrivingLeft, arrivingRight);
+		// float arriving = or(arrivingLeft, arrivingRight);
 
 
 		// float angleToP = Math.signum(lookToTargetAngle) * (GeometryUtils.PI/2f - Math.abs(lookToTargetAngle));
@@ -317,7 +317,7 @@ public class MyCarMain extends AI {
 		// float steerLeft = 0;//and(movingRightOfTarget, not(spinningLeft));
 		// float steerRight = 0;//and(movingLeftOfTarget, not(spinningRight));
 
-		float canStop = not(spinning);
+		// float canStop = not(spinning);
 
 		float driveFast = and(or(not(amMoving), movingToTarget), not(closeToCheckpoint));
 		float driveSlow = 0; //and(amFast, not(onTarget));

@@ -25,7 +25,7 @@ class NumberDisplay {
         new Vector2f(0, 2),
         new Vector2f(0, 1),
         new Vector2f(0.5f, 2),
-        new Vector2f(0.4f, 2.2f)
+        new Vector2f(0.4f, 2.5f)
     };
     // maps to points
     private final static int[][] numberMapping = {

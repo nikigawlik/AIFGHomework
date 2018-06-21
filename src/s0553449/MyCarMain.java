@@ -40,7 +40,7 @@ public class MyCarMain extends AI {
 	protected float cornerOffset = 30;
 	protected float cornerCalcMargin = 7f;
 	protected float cornerPostOffset = 0;//10f;
-	protected int smoothingIterations = 0;
+	protected int smoothingIterations = 4;
 
 	protected float maxDistanceFromPath = 40f;	
 	protected float targetPointShift = 60f;
@@ -53,6 +53,8 @@ public class MyCarMain extends AI {
 	
 	private LevelGraph levelGraph; // graph without start and goal nodes
 	private Node currentGoal;
+
+	private float number = 0;
 
 	// display specific stuff
 	private Vector2f[] debugFeelers;
@@ -228,6 +230,10 @@ public class MyCarMain extends AI {
 		ArrayList<Vector2f> debugFeelersList = new ArrayList<>();
 		debugFloats = new ArrayList<>();
 
+		
+		number++;
+		debugFloat(number);
+
 		float throttle = info.getMaxAcceleration();
 		float steering = 0f;
 		
@@ -235,6 +241,7 @@ public class MyCarMain extends AI {
 		position.y = info.getY();
 
 		Vector2f target = getCurrentTargetPoint();
+		Vector2f checkpoint = new Vector2f(info.getCurrentCheckpoint().x, info.getCurrentCheckpoint().y);
 		Vector2f toTarget = new Vector2f(target);
 		Vector2f.sub(toTarget, position, toTarget);
 		float targetAngle = (float)Math.atan2(toTarget.y, toTarget.x);
@@ -250,10 +257,13 @@ public class MyCarMain extends AI {
 		}
 		float velAngle = (float)Math.atan2(vel.y, vel.x);
 		
-		// float lookToTargetAngle = Vector2f.angle(look, target);
-		// float velToTargetAngle = Vector2f.angle(vel, target);
- 		float lookToTargetAngle = GeometryUtils.deltaAngle(lookAngle, targetAngle);
-		float velToTargetAngle = GeometryUtils.deltaAngle(velAngle, targetAngle);
+		float closeToCheckpoint = fuzzLinear(
+			GeometryUtils.distanceBetweenPoints(position, checkpoint), 
+			30,  
+			0
+		);
+
+		debugFloat(closeToCheckpoint);
 
 		// fuzzy logic
 
@@ -262,12 +272,28 @@ public class MyCarMain extends AI {
 		float spinning = or(spinningLeft, spinningRight);
 
 		float whatIsClose = 1.9f; // angle counts as "close" 
+		float whatIsCloseLower =0.1f; // angle counts as "close" 
+		
+		float velToTargetAngle = GeometryUtils.deltaAngle(velAngle, targetAngle);
+		// velToTargetAngle += Math.signum(lookToTargetAngle) * -GeometryUtils.PI/2f;
 
-		float movingLeftOfTarget = fuzzLinear(velToTargetAngle, 0, -whatIsClose);
-		float movingRightOfTarget = fuzzLinear(velToTargetAngle, 0, whatIsClose);
+		float movingLeftOfTarget = fuzzLinear(velToTargetAngle, -whatIsCloseLower, -whatIsClose);
+		float movingRightOfTarget = fuzzLinear(velToTargetAngle, whatIsCloseLower, whatIsClose);
 		float movingToTarget = and(not(movingLeftOfTarget), not(movingRightOfTarget));
+		
+		float usualSpeed = 0.5f;
+		float amFast = fuzzLinear(vel.length(), info.getMaxVelocity() * usualSpeed, info.getMaxVelocity());
+		float amMoving = fuzzLinear(vel.length(), 0, info.getMaxVelocity() * usualSpeed);
 
-		float arriveDeltaAngle = 0.4f ;//+ 0.5f * (info.getVelocity().length() / info.getMaxVelocity());
+		float onTarget = and(amMoving, movingToTarget); 
+
+		float slide = not(onTarget);
+		
+		float lookToTargetAngle = GeometryUtils.deltaAngle(lookAngle, targetAngle);
+
+		lookToTargetAngle += Math.signum(lookToTargetAngle) * GeometryUtils.PI/2f * slide;
+
+		float arriveDeltaAngle = 0.5f ;//+ 0.5f * (info.getVelocity().length() / info.getMaxVelocity());
 		float arriveDeltaLow = arriveDeltaAngle * 0.98f;
 
 		// float seekingLeft = fuzzLinear(lookToTargetAngle, -arriveDeltaAngle, -GeometryUtils.PI);
@@ -280,9 +306,10 @@ public class MyCarMain extends AI {
 		float arrivingRight = and(fuzzLinear(lookToTargetAngle, 0, arriveDeltaLow), not(seekingRight));
 		float arriving = or(arrivingLeft, arrivingRight);
 
-		float targetSpeed = 0.5f;
-		float amFast = fuzzLinear(vel.length(), info.getMaxVelocity() * targetSpeed, info.getMaxVelocity());
-		float amMoving = fuzzLinear(vel.length(), 0, info.getMaxVelocity() * targetSpeed);
+
+		// float angleToP = Math.signum(lookToTargetAngle) * (GeometryUtils.PI/2f - Math.abs(lookToTargetAngle));
+		// float rightOfP = fuzzLinear(angleToP, GeometryUtils.PI/2f, 0);
+		// float leftOfP = fuzzLinear(angleToP, -GeometryUtils.PI/2f, 0);
 
 		float velLeft = or(arrivingRight, seekingRight);
 		float velRight = or(arrivingLeft, seekingLeft);
@@ -292,21 +319,26 @@ public class MyCarMain extends AI {
 
 		float canStop = not(spinning);
 
-		float onTarget = and(amMoving, movingToTarget); // TODO moving only forwards
+		float driveFast = and(or(not(amMoving), movingToTarget), not(closeToCheckpoint));
+		float driveSlow = 0; //and(amFast, not(onTarget));
 
-		float accelerate = or(not(amMoving), movingToTarget);
-		float decelerate = or(amFast, and(amFast, not(onTarget)));
+		debugFloat(driveFast);
+		debugFloat(driveSlow);
 
-		throttle = defuzzLinear(accelerate, 0f, info.getMaxAcceleration()) 
-			+ defuzzLinear(decelerate, 0f, -info.getMaxAcceleration());
+		float targetSpeed = defuzzLinear(driveFast, 0f, info.getMaxVelocity()) 
+			+ defuzzLinear(driveSlow, 0f, -info.getMaxVelocity());
+
+		float forwardSpeed = Vector2f.dot(info.getVelocity(), look);
+		throttle = targetSpeed - forwardSpeed;
 
 		float targetAngularVelocity = defuzzLinear(velRight, 0, -info.getMaxAngularVelocity())
 			+ defuzzLinear(velLeft, 0, info.getMaxAngularVelocity());
 
 		steering = targetAngularVelocity - info.getAngularVelocity();
 
-		debugFloat(amFast);
-		debugFloat(steering);
+		debugFloat(forwardSpeed);
+		debugFloat(targetSpeed);
+		debugFloat(throttle);
 
 		
 		// debugFloat(throttle);
@@ -355,7 +387,8 @@ public class MyCarMain extends AI {
 			float distanceToP = GeometryUtils.distanceBetweenPoints(minPoint, pPoint);
 
 			float shift = minTargetPointShift + (targetPointShift - minTargetPointShift) 
-				* Math.max(0f, 1f - distanceToP/maxDistanceFromPath);
+				* Math.max(0f, 1f - distanceToP/maxDistanceFromPath) 
+				* (info.getVelocity().length() / info.getMaxVelocity());
 
 			p = shiftPointAlongPath(currentPath, minPoint, lineIndex, shift);
 

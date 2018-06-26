@@ -73,11 +73,15 @@ public class LevelGraph {
     private float collisionDetectionOffset;
 
     private Polygon[] obstacles;
+    private Polygon[] slowZones;
+    private Polygon[] fastZones;
 
     private ArrayList<Vector4f> edgeList;
 
-    public LevelGraph(Node[] nodes, Polygon[] obstacles, float normalExtension) {
+    public LevelGraph(Node[] nodes, Polygon[] obstacles, Polygon[] slowZones, Polygon[] fastZones, float normalExtension) {
         this.obstacles = obstacles;
+        this.slowZones = slowZones;
+        this.fastZones = fastZones;
         this.collisionDetectionOffset = normalExtension;
         
         this.nodes = new HashSet<>();
@@ -108,11 +112,44 @@ public class LevelGraph {
             Vector2f.sub(dir, root, dir); // calculate direction vector
             
             if (!intersectLineLevel(root, dir, useOffset) && !(n1.equals(n2))) {
-                n1.addConnection(n2, dir.length(), true);
+                n1.addConnection(n2, calculateCost(root, dir), true);
                 // debug info
                 edgeList.add(new Vector4f(n1.x, n1.y, n2.x, n2.y));
             }
         }
+    }
+
+    private float calculateCost(Vector2f root, Vector2f dir) {
+        float cost = 0;
+        int iterations = (int) dir.length();
+        int numberOfFastSpots = 0;
+
+        for(int i = 0; i < iterations; i++) {
+            float px = root.x + dir.x * ((float) i / iterations);
+            float py = root.y + dir.y * ((float) i / iterations);
+            
+            float localCost = 1f;
+
+            for (Polygon polygon : slowZones) {
+                if(polygon.contains(px, py)) {
+                    localCost *= 6;
+                }
+            }
+            for (Polygon polygon : fastZones) {
+                if(polygon.contains(px, py)) {
+                    localCost /= 4;
+                    numberOfFastSpots++;
+                }
+            }
+
+            cost += localCost;
+        }
+        cost /= iterations;
+        cost *= dir.length();
+        if(numberOfFastSpots > 120) {
+            cost = 1000;
+        }
+        return cost;
     }
     
     public boolean testLineAgainstLevel(Vector2f l1, Vector2f l2, boolean useOffset) {

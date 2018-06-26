@@ -40,7 +40,7 @@ public class MyCarMain extends AI {
 	protected float cornerOffset = 30;
 	protected float cornerCalcMargin = 7f;
 	protected float cornerPostOffset = 0;//10f;
-	protected int smoothingIterations = 4;
+	protected int smoothingIterations = 0;
 
 	protected float maxDistanceFromPath = 40f;	
 	protected float targetPointShift = 60f;
@@ -79,7 +79,13 @@ public class MyCarMain extends AI {
 	protected void calculateGraph() {
 		// calculate outer points
 		Node[] nodes = findNodes();
-		levelGraph = new LevelGraph(nodes, info.getTrack().getObstacles(), cornerOffset - cornerCalcMargin);
+		levelGraph = new LevelGraph(
+			nodes, 
+			info.getTrack().getObstacles(), 
+			info.getTrack().getSlowZones(), 
+			info.getTrack().getFastZones(), 
+			cornerOffset - cornerCalcMargin
+			);
 		// calculate edges
 		levelGraph.calculateVisibilityGraph();
 
@@ -93,7 +99,25 @@ public class MyCarMain extends AI {
 	private Node[] findNodes() {
 		HashSet<Vector2f> outputNodes = new HashSet<>();
 		for (Polygon polygon : info.getTrack().getObstacles()) {
-			int n = polygon.npoints;
+			addNodesForPolygons(outputNodes, polygon, false, cornerOffset);
+		}
+
+		for (Polygon polygon : info.getTrack().getSlowZones()) {
+			addNodesForPolygons(outputNodes, polygon, true, -cornerOffset);
+			addNodesForPolygons(outputNodes, polygon, true, cornerOffset);
+		}
+
+		for (Polygon polygon : info.getTrack().getFastZones()) {
+			addNodesForPolygons(outputNodes, polygon, true, -cornerOffset);
+			addNodesForPolygons(outputNodes, polygon, true, cornerOffset);
+		}
+
+		Node[] array = new Node[outputNodes.size()];
+		return outputNodes.toArray(array);
+	}
+
+	private void addNodesForPolygons(HashSet<Vector2f> outputNodes, Polygon polygon, boolean ignoreAngles, float normalOffset) {
+		int n = polygon.npoints;
 			for(int i = 0; i < n; i++) {
 				Vector2f p1 = new Vector2f(polygon.xpoints[i], polygon.ypoints[i]);
 				Vector2f p2 = new Vector2f(polygon.xpoints[(i+1)%n], polygon.ypoints[(i+1)%n]);
@@ -106,7 +130,7 @@ public class MyCarMain extends AI {
 				Vector2f v2o = new Vector2f(-v2.y, v2.x);
 			
 				// test if inner angle of corner < 180 deg
-				if(Vector2f.dot(v1, v2o) > 0) {
+				if(Vector2f.dot(v1, v2o) > 0 || ignoreAngles) {
 					v1.normalise();
 					v2.normalise();
 					Vector2f normal = new Vector2f();
@@ -114,15 +138,11 @@ public class MyCarMain extends AI {
 					normal.normalise();
 					normal.scale(-1f);
 					Vector2f offset = new Vector2f(normal);
-					offset.scale(cornerOffset);
+					offset.scale(normalOffset);
 					Vector2f.add(p2, offset, p2);
 					outputNodes.add(new Node(p2, normal));
 				}
 			}
-		}
-
-		Node[] array = new Node[outputNodes.size()];
-		return outputNodes.toArray(array);
 	}
 
 	@Override
@@ -287,14 +307,16 @@ public class MyCarMain extends AI {
 
 		float onTarget = and(amMoving, movingToTarget); 
 
-		float slide = not(onTarget);
+		float slide = and(not(onTarget), closeToCheckpoint);
 		
 		float lookToTargetAngle = GeometryUtils.deltaAngle(lookAngle, targetAngle);
 
-		lookToTargetAngle += Math.signum(lookToTargetAngle) * GeometryUtils.PI/2f * slide;
+		lookToTargetAngle += Math.signum(lookToTargetAngle) * GeometryUtils.PI/4f * slide;
 
 		float arriveDeltaAngle = 0.5f ;//+ 0.5f * (info.getVelocity().length() / info.getMaxVelocity());
 		float arriveDeltaLow = arriveDeltaAngle * 0.98f;
+
+		// lookToTargetAngle = velToTargetAngle * amMoving + lookToTargetAngle * not(amMoving);
 
 		// float seekingLeft = fuzzLinear(lookToTargetAngle, -arriveDeltaAngle, -GeometryUtils.PI);
 		// float seekingRight = fuzzLinear(lookToTargetAngle, arriveDeltaAngle, GeometryUtils.PI);
@@ -319,7 +341,8 @@ public class MyCarMain extends AI {
 
 		// float canStop = not(spinning);
 
-		float driveFast = and(or(not(amMoving), movingToTarget), not(closeToCheckpoint));
+		// float driveFast = and(or(not(amMoving), movingToTarget), not(closeToCheckpoint));
+		float driveFast = or(not(amMoving), movingToTarget);
 		float driveSlow = 0; //and(amFast, not(onTarget));
 
 		debugFloat(driveFast);
@@ -334,7 +357,10 @@ public class MyCarMain extends AI {
 		float targetAngularVelocity = defuzzLinear(velRight, 0, -info.getMaxAngularVelocity())
 			+ defuzzLinear(velLeft, 0, info.getMaxAngularVelocity());
 
+		float oversteer = 1f;
+
 		steering = targetAngularVelocity - info.getAngularVelocity();
+		steering *= defuzzLinear(oversteer, 1, 4f);
 
 		debugFloat(forwardSpeed);
 		debugFloat(targetSpeed);

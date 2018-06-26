@@ -14,13 +14,23 @@ import org.lwjgl.util.vector.Vector4f;
  * LevelGraph
  */
 public class LevelGraph {
+    static final float defaultSpecialCutoff = 120f;
+    // edges with a "cutoff cost" of higher than this are impassable
+    public float specialCutoff = defaultSpecialCutoff;
+
     private class Connection {
         GraphNode target;
-        float cost;
+        private float cost;
+        private float cutoffCost;
 
-        public Connection(GraphNode target, float cost) {
+        public Connection(GraphNode target, float cost, float cutoffCost) {
             this.target = target;
             this.cost = cost;
+            this.cutoffCost = cutoffCost;
+        }
+
+        public float getCost() {
+            return cutoffCost > specialCutoff? Float.POSITIVE_INFINITY : cost;
         }
     }
 
@@ -44,10 +54,10 @@ public class LevelGraph {
             connections = new ArrayList<>();
         }
 
-        public void addConnection(GraphNode target, float cost, boolean symmetric) {
-            connections.add(new Connection(target, cost));
+        public void addConnection(GraphNode target, float cost, float cutoffCost, boolean symmetric) {
+            connections.add(new Connection(target, cost, cutoffCost));
             if(symmetric) {
-                target.addConnection(this, cost, false);
+                target.addConnection(this, cost, cutoffCost, false);
             }
         }
 
@@ -112,14 +122,14 @@ public class LevelGraph {
             Vector2f.sub(dir, root, dir); // calculate direction vector
             
             if (!intersectLineLevel(root, dir, useOffset) && !(n1.equals(n2))) {
-                n1.addConnection(n2, calculateCost(root, dir), true);
+                addConnectionWithCost(n1, n2, root, dir);
                 // debug info
                 edgeList.add(new Vector4f(n1.x, n1.y, n2.x, n2.y));
             }
         }
     }
 
-    private float calculateCost(Vector2f root, Vector2f dir) {
+    private void addConnectionWithCost(GraphNode n1, GraphNode n2, Vector2f root, Vector2f dir) {
         float cost = 0;
         int iterations = (int) dir.length();
         int numberOfFastSpots = 0;
@@ -146,10 +156,8 @@ public class LevelGraph {
         }
         cost /= iterations;
         cost *= dir.length();
-        if(numberOfFastSpots > 120) {
-            cost = 1000;
-        }
-        return cost;
+        
+        n1.addConnection(n2, cost, numberOfFastSpots, true);
     }
     
     public boolean testLineAgainstLevel(Vector2f l1, Vector2f l2, boolean useOffset) {
@@ -213,6 +221,24 @@ public class LevelGraph {
     public Node[] findPath(Vector2f start, Vector2f goal) {
         GraphNode startNode = new GraphNode(start);
         GraphNode goalNode = new GraphNode(goal);
+
+        if(nodes.contains(startNode)) {
+            for (GraphNode node : nodes) {
+                if(node.equals(startNode)) {
+                    startNode = node;
+                    break;
+                }
+            }
+        }
+
+        if(nodes.contains(goalNode)) {
+            for (GraphNode node : nodes) {
+                if(node.equals(goalNode)) {
+                    goalNode = node;
+                    break;
+                }
+            }
+        }
 
         nodes.add(startNode);
         nodes.add(goalNode);
@@ -299,7 +325,8 @@ public class LevelGraph {
                 
                 // The distance from start to a neighbor
                 // the "dist_between" function may vary as per the solution requirements.
-                float tentative_gScore = gScore.get(current) + connection.cost;
+                float cost = connection.getCost();
+                float tentative_gScore = gScore.get(current) + cost;
                 if (tentative_gScore >= gScore.get(neighbor))
                     continue;		// This is not a better path.
                 

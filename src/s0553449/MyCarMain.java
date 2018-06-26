@@ -33,7 +33,7 @@ public class MyCarMain extends AI {
 
 	protected float stuckCheckFeelerDistance = 25f;
 
-	// private Vector2f positionLastFrame;
+	private Vector2f positionLastFrame;
 	private Vector2f position;
 
 	// pathfinding related
@@ -68,7 +68,7 @@ public class MyCarMain extends AI {
 	public MyCarMain(Info info) {
 		super(info);
 		init();
-		// positionLastFrame = new Vector2f(info.getX(), info.getY());
+		positionLastFrame = new Vector2f(info.getX(), info.getY());
 	}
 
 	protected void init() {
@@ -155,12 +155,22 @@ public class MyCarMain extends AI {
 		Node checkpointNode = new Node(checkpoint.x, checkpoint.y, 0, 0);
 
 		if(levelGraph != null && (currentGoal == null || !checkpointNode.equals(currentGoal))) {
+			// reset to default cutoff
+			levelGraph.specialCutoff = LevelGraph.defaultSpecialCutoff;
+			currentPath = calculatePathTo(checkpointNode);
+		}
+		
+		// detect explosion
+		if(GeometryUtils.distanceBetweenPoints(position, positionLastFrame) > 10f) {
+			// car was reset
+			// make the cutoff smaller, to exclude long speed lanes from the pathfinding
+			levelGraph.specialCutoff = Math.max(levelGraph.specialCutoff - 20f, 20f);
 			currentPath = calculatePathTo(checkpointNode);
 		}
 		
 		DriverAction steering = doSteering();
 
-		// positionLastFrame = new Vector2f(info.getX(), info.getY());
+		positionLastFrame = new Vector2f(info.getX(), info.getY());
 
 		return steering;
 	}
@@ -279,7 +289,7 @@ public class MyCarMain extends AI {
 		
 		float closeToCheckpoint = fuzzLinear(
 			GeometryUtils.distanceBetweenPoints(position, checkpoint), 
-			30,  
+			40,  
 			0
 		);
 
@@ -345,6 +355,8 @@ public class MyCarMain extends AI {
 		float driveFast = or(not(amMoving), movingToTarget);
 		float driveSlow = 0; //and(amFast, not(onTarget));
 
+		debugFloat(levelGraph.specialCutoff);
+
 		debugFloat(driveFast);
 		debugFloat(driveSlow);
 
@@ -357,10 +369,10 @@ public class MyCarMain extends AI {
 		float targetAngularVelocity = defuzzLinear(velRight, 0, -info.getMaxAngularVelocity())
 			+ defuzzLinear(velLeft, 0, info.getMaxAngularVelocity());
 
-		float oversteer = 1f;
+		// float oversteer = 1f;
 
 		steering = targetAngularVelocity - info.getAngularVelocity();
-		steering *= defuzzLinear(oversteer, 1, 4f);
+		// steering *= defuzzLinear(oversteer, 1, 4f);
 
 		debugFloat(forwardSpeed);
 		debugFloat(targetSpeed);
@@ -372,13 +384,13 @@ public class MyCarMain extends AI {
 		
 		// debug section
 
-		debugStr += "lookToTargetAngle: " + debugFormat.format(lookToTargetAngle) + "\n";
-		debugStr += "velToTargetAngle: " + debugFormat.format(velToTargetAngle) + "\n";
-		debugStr += "current angleV: " + debugFormat.format(info.getAngularVelocity()) + "\n";
-		debugStr += "current vel: " + debugFormat.format(info.getVelocity().length()) + "\n";
+		// debugStr += "lookToTargetAngle: " + debugFormat.format(lookToTargetAngle) + "\n";
+		// debugStr += "velToTargetAngle: " + debugFormat.format(velToTargetAngle) + "\n";
+		// debugStr += "current angleV: " + debugFormat.format(info.getAngularVelocity()) + "\n";
+		// debugStr += "current vel: " + debugFormat.format(info.getVelocity().length()) + "\n";
 
-		debugStr += "steering chk: " + debugFormat.format(steering/info.getMaxAngularAcceleration()) + "\n";
-		debugStr += "throttle chk: " + debugFormat.format(throttle/info.getMaxAcceleration()) + "\n";
+		// debugStr += "steering chk: " + debugFormat.format(steering/info.getMaxAngularAcceleration()) + "\n";
+		// debugStr += "throttle chk: " + debugFormat.format(throttle/info.getMaxAcceleration()) + "\n";
 
 		debugFeelersList.add(target);
 
@@ -515,15 +527,15 @@ public class MyCarMain extends AI {
 				GL11.glEnd();
 			}
 			
-			if (debugLines != null) {
-				GL11.glColor3f(0f, 0f, 0f);
-				GL11.glBegin(GL11.GL_LINES);
-				for (Vector4f p : debugLines) {
-					GL11.glVertex2d(p.x, p.y);
-					GL11.glVertex2d(p.z, p.w);
-				}
-				GL11.glEnd();
-			}
+			// if (debugLines != null) {
+			// 	GL11.glColor3f(0f, 0f, 0f);
+			// 	GL11.glBegin(GL11.GL_LINES);
+			// 	for (Vector4f p : debugLines) {
+			// 		GL11.glVertex2d(p.x, p.y);
+			// 		GL11.glVertex2d(p.z, p.w);
+			// 	}
+			// 	GL11.glEnd();
+			// }
 			
 			if (currentPath != null) {
 				GL11.glColor3f(0f, 0f, 1f);
